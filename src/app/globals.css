@@ -1,0 +1,326 @@
+@import "tailwindcss";
+
+/* —— Nations.Fi brand tokens —— */
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+  --foreground-secondary: #e2e8f0;
+  --muted: #8b9cb3;
+  --muted-faint: #64748b;
+
+  /* Primary action / links */
+  --accent: #22d3ee;
+  --accent-dim: rgba(34, 211, 238, 0.12);
+  --accent-ring: rgba(34, 211, 238, 0.35);
+
+  /* Wordmark ".Fi" — warm counterpoint to cool cyan */
+  --brand-fi: #fcd34d;
+  --brand-fi-dim: rgba(252, 211, 77, 0.14);
+
+  --positive: #4ade80;
+  --negative: #fb7185;
+
+  --surface-0: #020617;
+  --surface-1: #0a101f;
+  --surface-2: #0f172a;
+  --surface-3: #151f33;
+  --surface-hover: rgba(30, 41, 59, 0.65);
+  --surface-glass: rgba(2, 6, 23, 0.72);
+
+  --border: rgba(148, 163, 184, 0.09);
+  --border-strong: rgba(148, 163, 184, 0.16);
+  --border-accent: rgba(34, 211, 238, 0.22);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-elevated:
+    0 0 0 1px rgba(255, 255, 255, 0.04), 0 12px 40px -12px rgba(0, 0, 0, 0.55);
+  --shadow-glow-accent: 0 0 48px -8px rgba(34, 211, 238, 0.12);
+
+  --header-bg: rgba(2, 6, 23, 0.78);
+  /* 2D map ocean — keep in sync with `GlobeCanvas` SVG gradient */
+  --map-ocean-a: #0a1628;
+  --map-ocean-b: #050c18;
+  --dock-bg: var(--surface-0);
+  /* Slight lift for rails on top of screener / map seam */
+  --screener-band: rgba(5, 12, 24, 0.48);
+  --screener-row-hover: rgba(34, 211, 238, 0.07);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* —— Map / screener motion (honors reduced motion) —— */
+@keyframes nf-ocean-shimmer {
+  0% {
+    opacity: 0.22;
+    transform: translate(-8%, -6%) scale(1.02);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translate(6%, 5%) scale(1.06);
+  }
+  100% {
+    opacity: 0.28;
+    transform: translate(-4%, 4%) scale(1.03);
+  }
+}
+
+@keyframes nf-aurora-breathe {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.58;
+    transform: scale(1.05) rotate(2deg);
+  }
+}
+
+@keyframes nf-dock-sheen {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes nf-dock-topline {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes nf-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nf-hint-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.nf-map-ocean-shimmer {
+  transform-origin: 50% 50%;
+  animation: nf-ocean-shimmer 11s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.nf-dashboard-aurora {
+  transform-origin: 50% 35%;
+  animation: nf-aurora-breathe 16s ease-in-out infinite;
+  background:
+    radial-gradient(
+      ellipse 95% 75% at 58% 32%,
+      rgba(34, 211, 238, 0.07) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 18% 78%,
+      rgba(252, 211, 77, 0.05) 0%,
+      transparent 52%
+    );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.nf-dock-sheen {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.06) 25%,
+    rgba(252, 211, 77, 0.05) 50%,
+    rgba(34, 211, 238, 0.06) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: nf-dock-sheen 8s linear infinite;
+}
+
+.nf-country-path {
+  transition:
+    fill 260ms var(--ease-out-expo),
+    stroke 260ms var(--ease-out-expo),
+    stroke-width 260ms var(--ease-out-expo),
+    filter 320ms var(--ease-out-expo);
+}
+
+.nf-country-path:hover {
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.35));
+}
+
+/* Map country name labels (SVG <text>) */
+.nf-country-label {
+  pointer-events: none;
+  font-family: var(--font-brand), var(--font-geist-sans), system-ui, sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke fill;
+  stroke: rgba(2, 6, 23, 0.88);
+  stroke-width: 2.75px;
+  stroke-linejoin: round;
+  fill: rgba(226, 232, 240, 0.88);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:
+    fill 220ms var(--ease-out-expo),
+    stroke 220ms var(--ease-out-expo),
+    opacity 220ms var(--ease-out-expo);
+}
+
+.nf-country-label--listed {
+  fill: rgba(186, 230, 253, 0.95);
+}
+
+.nf-country-label--hover {
+  fill: rgba(165, 243, 252, 0.98);
+  stroke: rgba(2, 6, 23, 0.95);
+}
+
+.nf-panel-pop {
+  animation: nf-panel-in 320ms var(--ease-out-expo) both;
+}
+
+.nf-hint-float {
+  animation: nf-hint-float 4.5s ease-in-out infinite;
+}
+
+.nf-marker-inner {
+  transform: scale(1);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 280ms var(--ease-spring);
+}
+
+.nf-marker-root:hover .nf-marker-inner {
+  transform: scale(1.12);
+}
+
+.nf-marker-inner--hot {
+  transform: scale(1.18);
+}
+
+.nf-marker-root:hover .nf-marker-inner--hot {
+  transform: scale(1.26);
+}
+
+@keyframes nf-announce-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.nf-announce-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: nf-announce-scroll 36s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-announce-track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nf-announce-track > :last-child {
+    display: none;
+  }
+
+  .nf-map-ocean-shimmer,
+  .nf-dashboard-aurora,
+  .nf-dock-sheen,
+  .nf-hint-float {
+    animation: none !important;
+  }
+
+  .nf-panel-pop {
+    animation: none !important;
+  }
+
+  .nf-hint-float {
+    transform: none !important;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-brand: var(--font-outfit), var(--font-geist-sans), ui-sans-serif,
+    system-ui, sans-serif;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(
+      120% 80% at 50% -30%,
+      rgba(34, 211, 238, 0.06) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      80% 50% at 100% 0%,
+      rgba(252, 211, 77, 0.03) 0%,
+      transparent 45%
+    );
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.28);
+  color: var(--foreground);
+}
+
+/* Focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible) {
+  outline: none;
+}
