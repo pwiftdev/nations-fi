@@ -486,7 +486,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
         pC.translate([projectionFit.baseTx, projectionFit.baseTy]);
         const gp = pC(centroid);
         if (!gp) return;
-        nextPan = { x: cx - gp[0], y: cy - gp[1] };
+        nextPan = { x: cx - gp[0]!, y: cy - gp[1]! };
       }
 
       setZoom(nextZoom);

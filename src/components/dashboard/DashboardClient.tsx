@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { NationCoinRow, ScreenerSortKey } from "@/types/screener";
+import type { NationCoinRow } from "@/types/screener";
 import {
   isTokenCategoryId,
   type TokenCategoryId,
@@ -24,34 +24,20 @@ import {
 import { ScreenerDock } from "@/components/screener/ScreenerDock";
 import type { ScreenerDockProps } from "@/components/screener/ScreenerDock";
 import { MapHud } from "@/components/dashboard/MapHud";
+import { MapVolumeSideRail } from "@/components/dashboard/MapVolumeSideRail";
 import { MobileMapBottomChrome } from "@/components/dashboard/MobileMapBottomChrome";
 import {
   MobileHomeTabs,
   type MobileHomeTab,
 } from "@/components/dashboard/MobileHomeTabs";
 import { FEATURES } from "@/config/features";
+import { useIsMdUp } from "@/lib/use-is-md-up";
 import {
   MAP_LABEL_STORAGE_KEY,
   type MapLabelMode,
   parseLabelMode,
 } from "@/components/globe/map-label-mode";
 import { getWatchlistIds, toggleWatchlistId } from "@/lib/watchlist";
-
-function sortRows(
-  rows: NationCoinRow[],
-  key: ScreenerSortKey,
-  dir: "asc" | "desc",
-): NationCoinRow[] {
-  const mul = dir === "asc" ? 1 : -1;
-  return [...rows].sort((a, b) => {
-    const va = a[key];
-    const vb = b[key];
-    if (typeof va === "number" && typeof vb === "number") {
-      return (va - vb) * mul;
-    }
-    return 0;
-  });
-}
 
 function filterRows(rows: NationCoinRow[], q: string): NationCoinRow[] {
   const s = q.trim().toLowerCase();
@@ -103,12 +89,11 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const globeRef = useRef<GlobeCanvasHandle>(null);
 
+  const isMdUp = useIsMdUp();
   const [mobileTab, setMobileTab] = useState<MobileHomeTab>("screener");
   const [mapMounted, setMapMounted] = useState(false);
 
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<ScreenerSortKey>("rank");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [countryHover, setCountryHover] = useState<CountryHoverState | null>(
     null,
@@ -192,8 +177,8 @@ function DashboardContent() {
   }, []);
 
   useEffect(() => {
-    if (mobileTab === "map") setMapMounted(true);
-  }, [mobileTab]);
+    if (!isMdUp && mobileTab === "map") setMapMounted(true);
+  }, [isMdUp, mobileTab]);
 
   const categoryFilter = useMemo((): TokenCategoryId | null => {
     const raw = searchParams.get("category") ?? "";
@@ -272,11 +257,6 @@ function DashboardContent() {
     return mappable.filter((r) => r.category === categoryFilter);
   }, [coins, categoryFilter]);
 
-  const sorted = useMemo(
-    () => sortRows(filtered, sortKey, sortDir),
-    [filtered, sortKey, sortDir],
-  );
-
   const markers = useMemo(() => coinsToGlobeMarkers(mapCoins), [mapCoins]);
 
   const highlightMarkerId =
@@ -288,15 +268,6 @@ function DashboardContent() {
     void watchlistTick;
     return new Set(getWatchlistIds());
   }, [watchlistTick]);
-
-  const onSortChange = (key: ScreenerSortKey) => {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(key);
-    setSortDir(key === "rank" || key === "ageHours" ? "asc" : "desc");
-  };
 
   const dismissCountryPanel = useCallback(() => {
     setPinnedCountry(null);
@@ -323,6 +294,26 @@ function DashboardContent() {
   }, []);
 
   const mapCountryPanel = pinnedCountry ?? countryHover;
+
+  const MAP_SIDE_LIST_SIZE = 12;
+
+  const trendingByVolume = useMemo(
+    () =>
+      [...coins]
+        .filter((r) => r.volume24h > 0)
+        .sort((a, b) => b.volume24h - a.volume24h)
+        .slice(0, MAP_SIDE_LIST_SIZE),
+    [coins],
+  );
+
+  const topPlayersByVolume = useMemo(
+    () =>
+      [...coins]
+        .filter((r) => r.category === "footballer" && r.volume24h > 0)
+        .sort((a, b) => b.volume24h - a.volume24h)
+        .slice(0, MAP_SIDE_LIST_SIZE),
+    [coins],
+  );
 
   const onToggleWatchlist = useCallback((id: string) => {
     if (!FEATURES.showWatchlistColumn) return;
@@ -366,16 +357,13 @@ function DashboardContent() {
   const screenerProps: ScreenerDockProps = {
     query,
     onQueryChange: setQuery,
-    resultCount: sorted.length,
-    rows: sorted,
+    resultCount: filtered.length,
+    rows: filtered,
     aggregateRows: aggregateForStats,
     statsLoading: coinsLoading,
     categoryFilter,
     categoryCounts,
     onCategoryChange: setCategoryFilter,
-    sortKey,
-    sortDir,
-    onSortChange,
     hoveredRowId,
     onHoverRow: setHoveredRowId,
     nationFilter,
@@ -388,12 +376,13 @@ function DashboardContent() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* ── Mobile: screener-first with optional Map tab (md and below) ── */}
-      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+      {!isMdUp ? (
+      /* ── Mobile: screener-first with optional Map tab ── */
+      <div className="flex min-h-0 flex-1 flex-col">
         <MobileHomeTabs
           active={mobileTab}
           onChange={setMobileTab}
-          screenerCount={sorted.length}
+          screenerCount={filtered.length}
         />
         <DataStatusBanners loading={coinsLoading} error={coinsError} />
 
@@ -406,7 +395,7 @@ function DashboardContent() {
             />
           </div>
         ) : (
-          <div className="relative min-h-0 flex-1 bg-[var(--map-ocean)]">
+          <div className="nf-map-frame relative min-h-0 flex-1 bg-[var(--map-ocean)]">
             {mapMounted ? (
               <>
                 <WorldGlobe
@@ -434,37 +423,66 @@ function DashboardContent() {
           </div>
         )}
       </div>
-
-      {/* ── Desktop: map + bottom dock (md and up) ── */}
-      <div className="hidden min-h-0 flex-1 flex-col md:flex">
-        <div className="relative min-h-0 flex-1 bg-[var(--map-ocean)]">
-          <WorldGlobe
-            ref={globeRef}
-            markers={markers}
-            highlightMarkerId={highlightMarkerId}
-            onMarkerHover={setHoveredRowId}
-            allCoins={mapCoins}
-            countryPanelCoins={coins}
-            onCountryHover={handleCountryHover}
-            onCountryPin={handleCountryPin}
-            onCountryUnpin={handleCountryUnpin}
-            countryClickAction="panel"
-            labelMode={labelMode}
+      ) : (
+      /* ── Desktop: side rails + map + bottom dock ── */
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="grid min-h-0 flex-1 grid-cols-5">
+          <MapVolumeSideRail
+            title="Trending"
+            rows={trendingByVolume}
+            hoveredRowId={hoveredRowId}
+            onHoverRow={setHoveredRowId}
+            onRowSelect={onRowMapFocusDesktop}
+            edge="left"
           />
-          {FEATURES.showMapHud ? (
-            <MapHud show labelMode={labelMode} onCycleLabels={cycleLabels} />
-          ) : null}
-          {mapCountryPanel ? (
-            <CountryHoverPanel
-              state={mapCountryPanel}
-              onDismiss={dismissCountryPanel}
-            />
-          ) : null}
-          <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center px-4">
-            <p className="rounded-full border border-[var(--border)] bg-[var(--surface-glass)] px-3 py-1 text-center font-mono text-[10px] tracking-wide text-[var(--muted)] backdrop-blur-md">
-              Drag · Scroll to zoom · Click country to lock panel · Esc to reset
-            </p>
+          <div className="nf-map-frame relative col-span-3 min-h-0 min-w-0 bg-[var(--map-ocean)]">
+            <div className="relative h-full min-h-0">
+              <WorldGlobe
+                ref={globeRef}
+                markers={markers}
+                highlightMarkerId={highlightMarkerId}
+                onMarkerHover={setHoveredRowId}
+                allCoins={mapCoins}
+                countryPanelCoins={coins}
+                onCountryHover={handleCountryHover}
+                onCountryPin={handleCountryPin}
+                onCountryUnpin={handleCountryUnpin}
+                countryClickAction="panel"
+                labelMode={labelMode}
+              />
+              {FEATURES.showMapHud ? (
+                <MapHud
+                  show
+                  labelMode={labelMode}
+                  onCycleLabels={cycleLabels}
+                />
+              ) : null}
+              {mapCountryPanel ? (
+                <CountryHoverPanel
+                  state={mapCountryPanel}
+                  onDismiss={dismissCountryPanel}
+                  layout="bottom"
+                />
+              ) : null}
+              <div
+                className={`pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4 ${
+                  mapCountryPanel ? "bottom-[min(38vh,220px)] pb-2" : "bottom-3"
+                }`}
+              >
+                <p className="rounded-full border border-[var(--border)] bg-[var(--surface-glass)] px-3 py-1 text-center font-mono text-[10px] tracking-wide text-[var(--muted)] backdrop-blur-md">
+                  Drag · Scroll to zoom · Click country to lock · Esc to reset
+                </p>
+              </div>
+            </div>
           </div>
+          <MapVolumeSideRail
+            title="Top Players"
+            rows={topPlayersByVolume}
+            hoveredRowId={hoveredRowId}
+            onHoverRow={setHoveredRowId}
+            onRowSelect={onRowMapFocusDesktop}
+            edge="right"
+          />
         </div>
 
         <div className="shrink-0 bg-[var(--header-bg)] pb-3">
@@ -476,6 +494,7 @@ function DashboardContent() {
           />
         </div>
       </div>
+      )}
     </div>
   );
 }

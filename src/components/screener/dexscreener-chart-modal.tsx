@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId } from "react";
+import { createPortal } from "react-dom";
 import { dexscreenerEmbedIframeSrc } from "@/lib/dexscreener/embed-url";
 
 export interface DexscreenerChartModalProps {
@@ -38,11 +39,11 @@ export function DexscreenerChartModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:items-center sm:p-6 sm:pb-6"
+      className="fixed inset-0 z-[200] flex items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:items-center sm:p-6 sm:pb-6"
       role="presentation"
       onClick={onClose}
     >
@@ -97,6 +98,7 @@ export function DexscreenerChartModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

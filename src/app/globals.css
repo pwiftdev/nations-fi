@@ -108,7 +108,49 @@
   }
 }
 
+/* ───────────────── Map frame (blue outer glow) ───────────────── */
+.nf-map-frame {
+  isolation: isolate;
+}
+
+.nf-map-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.28),
+    inset 0 0 72px 16px var(--map-ocean-glow);
+}
+
+.nf-map-frame::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 31;
+  pointer-events: none;
+  box-shadow:
+    0 0 20px 1px rgba(37, 99, 235, 0.55),
+    0 0 44px 6px rgba(14, 165, 233, 0.35),
+    0 0 80px 14px rgba(2, 132, 199, 0.2);
+}
+
 /* ───────────────── Map cartography ───────────────── */
+.nf-country-token-carousel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.nf-country-token-carousel::-webkit-scrollbar {
+  height: 6px;
+}
+
+.nf-country-token-carousel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+
 .nf-country-path {
   transition:
     fill 180ms var(--ease-out-expo),

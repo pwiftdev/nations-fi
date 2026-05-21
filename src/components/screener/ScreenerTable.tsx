@@ -1,7 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { NationCoinRow, ScreenerSortKey } from "@/types/screener";
+import {
+  DEFAULT_SCREENER_SORT_DIR,
+  DEFAULT_SCREENER_SORT_KEY,
+  nextSortDirForKey,
+  sortScreenerRows,
+} from "@/lib/screener-sort";
 import { getCategoryLabel } from "@/types/token-category";
 import {
   formatAge,
@@ -35,9 +41,6 @@ function SortCaret({
 
 export interface ScreenerTableProps {
   rows: NationCoinRow[];
-  sortKey: ScreenerSortKey;
-  sortDir: "asc" | "desc";
-  onSortChange: (key: ScreenerSortKey) => void;
   hoveredRowId: string | null;
   onHoverRow: (id: string | null) => void;
   variant?: "full" | "compact";
@@ -203,9 +206,6 @@ function MobileTokenCard({
 
 export function ScreenerTable({
   rows,
-  sortKey,
-  sortDir,
-  onSortChange,
   hoveredRowId,
   onHoverRow,
   variant = "full",
@@ -215,6 +215,25 @@ export function ScreenerTable({
   showWatchlist = false,
 }: ScreenerTableProps) {
   const [chartRow, setChartRow] = useState<NationCoinRow | null>(null);
+  const [sortKey, setSortKey] = useState<ScreenerSortKey>(DEFAULT_SCREENER_SORT_KEY);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(DEFAULT_SCREENER_SORT_DIR);
+
+  const sortedRows = useMemo(
+    () => sortScreenerRows(rows, sortKey, sortDir),
+    [rows, sortKey, sortDir],
+  );
+
+  const onSortChange = useCallback(
+    (key: ScreenerSortKey) => {
+      if (key === sortKey) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return;
+      }
+      setSortKey(key);
+      setSortDir(nextSortDirForKey(key));
+    },
+    [sortKey],
+  );
 
   const fullHeaders: {
     key: ScreenerSortKey | null;
@@ -283,12 +302,12 @@ export function ScreenerTable({
 
       {/* ── Mobile card list (visible below sm breakpoint) ── */}
       <div className="sm:hidden">
-        {rows.length === 0 ? (
+        {sortedRows.length === 0 ? (
           <p className="px-4 py-6 text-center text-[12px] text-[var(--muted)]">
             No tokens found
           </p>
         ) : (
-          rows.map((row) => (
+          sortedRows.map((row) => (
             <MobileTokenCard
               key={row.id}
               row={row}
@@ -340,7 +359,7 @@ export function ScreenerTable({
           )}
         </div>
 
-        {rows.map((row) => {
+        {sortedRows.map((row) => {
           const isHover = hoveredRowId === row.id;
           return (
             <div

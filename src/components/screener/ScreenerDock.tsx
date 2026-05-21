@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { NationCoinRow, ScreenerSortKey } from "@/types/screener";
+import type { NationCoinRow } from "@/types/screener";
 import type { TokenCategoryId } from "@/types/token-category";
 import { formatCompactUsd } from "@/lib/format";
 import { ScreenerToolbar } from "./ScreenerToolbar";
@@ -18,9 +18,6 @@ export interface ScreenerDockProps {
   categoryFilter?: TokenCategoryId | null;
   categoryCounts?: Record<TokenCategoryId, number>;
   onCategoryChange?: (category: TokenCategoryId | null) => void;
-  sortKey: ScreenerSortKey;
-  sortDir: "asc" | "desc";
-  onSortChange: (key: ScreenerSortKey) => void;
   hoveredRowId: string | null;
   onHoverRow: (id: string | null) => void;
   nationFilter?: string | null;
@@ -158,9 +155,6 @@ export function ScreenerDock(props: ScreenerDockProps) {
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <ScreenerTable
               rows={props.rows}
-              sortKey={props.sortKey}
-              sortDir={props.sortDir}
-              onSortChange={props.onSortChange}
               hoveredRowId={props.hoveredRowId}
               onHoverRow={props.onHoverRow}
               variant="compact"

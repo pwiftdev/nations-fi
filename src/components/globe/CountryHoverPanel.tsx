@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { NationCoinRow } from "@/types/screener";
 import {
   formatCompactUsd,
@@ -8,7 +9,9 @@ import {
   shortenAddress,
 } from "@/lib/format";
 import { flagEmoji } from "@/lib/flags";
-import { DexBadge } from "@/components/screener/dex-badge";
+import { ChartButton } from "@/components/screener/chart-button";
+import { DexscreenerChartModal } from "@/components/screener/dexscreener-chart-modal";
+import { TradeButton } from "@/components/screener/trade-button";
 import { TokenAvatar } from "@/components/screener/token-avatar";
 
 export type CountryHoverState = {
@@ -23,7 +26,19 @@ function pctClass(n: number): string {
   return "text-[var(--muted)]";
 }
 
-function MobileTokenChip({ coin }: { coin: NationCoinRow }) {
+function chartAddressFor(coin: NationCoinRow): string | undefined {
+  return coin.chartAddress ?? coin.contractAddress;
+}
+
+function CountryTokenChip({
+  coin,
+  onChart,
+}: {
+  coin: NationCoinRow;
+  onChart: (coin: NationCoinRow) => void;
+}) {
+  const chartAddr = chartAddressFor(coin);
+
   return (
     <li className="w-[9.25rem] shrink-0 snap-start">
       <div className="flex h-full flex-col gap-1.5 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-1)]/90 px-2.5 py-2">
@@ -51,17 +66,47 @@ function MobileTokenChip({ coin }: { coin: NationCoinRow }) {
             {formatPercent(coin.change24h)}
           </span>
         </div>
-        <div className="flex items-center justify-between text-[9px] text-[var(--muted-faint)]">
-          <span>
+        <div className="flex items-center justify-between gap-1.5 text-[9px] text-[var(--muted-faint)]">
+          <span className="min-w-0 truncate">
             MC{" "}
             <span className="font-mono tabular-nums text-[var(--muted)]">
               {formatCompactUsd(coin.marketCapUsd)}
             </span>
           </span>
-          <DexBadge dexLabel={coin.dexLabel} />
+          <div className="flex shrink-0 items-center gap-1">
+            <ChartButton
+              compact
+              disabled={!chartAddr}
+              onClick={() => onChart(coin)}
+            />
+            <TradeButton mint={coin.contractAddress} compact />
+          </div>
         </div>
       </div>
     </li>
+  );
+}
+
+const TOKEN_CAROUSEL_CLASS =
+  "nf-country-token-carousel flex h-full min-h-0 w-full flex-nowrap gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain px-3 py-2.5 pb-3 snap-x snap-mandatory [-webkit-overflow-scrolling:touch] sm:px-4";
+
+function CountryTokenCarousel({
+  coins,
+  onChart,
+  className = "",
+}: {
+  coins: NationCoinRow[];
+  onChart: (coin: NationCoinRow) => void;
+  className?: string;
+}) {
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <ul className={`${TOKEN_CAROUSEL_CLASS} ${className}`.trim()}>
+        {coins.map((c) => (
+          <CountryTokenChip key={c.id} coin={c} onChart={onChart} />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -69,9 +114,11 @@ function MobileTokenChip({ coin }: { coin: NationCoinRow }) {
 export function MobileCountrySheet({
   state,
   embedded = false,
+  onChart,
 }: {
   state: CountryHoverState;
   embedded?: boolean;
+  onChart: (coin: NationCoinRow) => void;
 }) {
   const { displayName, coins } = state;
 
@@ -81,16 +128,16 @@ export function MobileCountrySheet({
 
   return (
     <div
-      className={shellClass}
+      className={`${shellClass} flex max-h-[inherit] flex-col`}
       role="dialog"
       aria-label={`Nation sector: ${displayName}`}
     >
       {!embedded ? (
         <>
-          <div className="flex justify-center pt-2 pb-0.5" aria-hidden>
+          <div className="flex shrink-0 justify-center pt-2 pb-0.5" aria-hidden>
             <div className="h-1 w-9 rounded-full bg-[var(--border-strong)]" />
           </div>
-          <div className="flex items-center gap-2.5 border-b border-[var(--border)] px-3 py-2">
+          <div className="flex shrink-0 items-center gap-2.5 border-b border-[var(--border)] px-3 py-2">
             <span className="text-xl leading-none">
               {state.iso2 ? flagEmoji(state.iso2) : "◎"}
             </span>
@@ -114,26 +161,16 @@ export function MobileCountrySheet({
       ) : null}
 
       {coins.length > 0 ? (
-        <ul
-          className={`flex gap-2 overflow-x-auto overscroll-x-contain snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${
-            embedded ? "max-h-[min(24vh,11rem)] px-3 py-2.5" : "px-3 py-2.5"
-          }`}
-        >
-          {coins.map((c) => (
-            <MobileTokenChip key={c.id} coin={c} />
-          ))}
-        </ul>
+        <CountryTokenCarousel
+          coins={coins}
+          onChart={onChart}
+          className={embedded ? "max-h-[min(24vh,11rem)]" : undefined}
+        />
       ) : embedded ? null : (
         <p className="px-3 py-3 text-center text-[11px] text-[var(--muted)]">
           No tokens mapped for this country yet.
         </p>
       )}
-
-      {!embedded ? (
-        <p className="border-t border-[var(--border)]/80 px-3 py-1.5 text-center text-[9px] tracking-wide text-[var(--muted-faint)]">
-          Tap country again to filter screener
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -141,9 +178,11 @@ export function MobileCountrySheet({
 function DesktopCountryPanel({
   state,
   onDismiss,
+  onChart,
 }: {
   state: CountryHoverState;
   onDismiss?: () => void;
+  onChart: (coin: NationCoinRow) => void;
 }) {
   const { iso2, displayName, coins } = state;
 
@@ -212,7 +251,14 @@ function DesktopCountryPanel({
                     </div>
                   </div>
                 </div>
-                <DexBadge dexLabel={c.dexLabel} />
+                <div className="flex shrink-0 items-center gap-1">
+                  <ChartButton
+                    compact
+                    disabled={!chartAddressFor(c)}
+                    onClick={() => onChart(c)}
+                  />
+                  <TradeButton mint={c.contractAddress} compact />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[11px] tabular-nums">
                 <span className="text-[var(--muted-faint)]">Price</span>
@@ -255,12 +301,102 @@ function DesktopCountryPanel({
   );
 }
 
-export function CountryHoverPanel({
+/** Bottom strip over the desktop map (country panel + token carousel). */
+function DesktopBottomCountryPanel({
   state,
   onDismiss,
+  onChart,
 }: {
   state: CountryHoverState;
   onDismiss?: () => void;
+  onChart: (coin: NationCoinRow) => void;
 }) {
-  return <DesktopCountryPanel state={state} onDismiss={onDismiss} />;
+  const { iso2, displayName, coins } = state;
+
+  return (
+    <div
+      className="nf-country-panel nf-panel-pop pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex h-[min(38vh,220px)] max-h-[min(38vh,220px)] flex-col overflow-hidden rounded-t-[var(--radius-lg)] border border-b-0 border-[var(--border-accent)]/35 bg-[var(--surface-glass)] shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+      role="dialog"
+      aria-label={`Nation sector: ${displayName}`}
+    >
+      <div
+        className="h-0.5 w-full shrink-0 bg-gradient-to-r from-[var(--accent)]/80 via-[var(--brand-fi)]/60 to-[var(--accent)]/40"
+        aria-hidden
+      />
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-[var(--border)] px-3 py-2 sm:px-4">
+        <span className="text-xl leading-none sm:text-2xl">
+          {iso2 ? flagEmoji(iso2) : "◎"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-faint)] sm:text-[10px]">
+            Nation sector
+          </p>
+          <h2 className="truncate font-brand text-[14px] font-semibold tracking-[-0.02em] text-[var(--foreground)] sm:text-[15px]">
+            {displayName}
+          </h2>
+          <p className="text-[10px] text-[var(--muted)]">
+            {coins.length === 0
+              ? "No listed pairs"
+              : `${coins.length} token${coins.length === 1 ? "" : "s"}`}
+          </p>
+        </div>
+        {onDismiss ? (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--border)] px-2 py-1 text-[10px] font-medium text-[var(--muted)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground-secondary)]"
+            aria-label="Close country panel"
+          >
+            Close
+          </button>
+        ) : null}
+      </div>
+      {coins.length > 0 ? (
+        <CountryTokenCarousel coins={coins} onChart={onChart} />
+      ) : (
+        <p className="px-4 py-4 text-center text-[11px] text-[var(--muted)]">
+          No tokens mapped for this country yet.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function CountryHoverPanel({
+  state,
+  onDismiss,
+  layout = "side",
+}: {
+  state: CountryHoverState;
+  onDismiss?: () => void;
+  layout?: "side" | "bottom";
+}) {
+  const [chartCoin, setChartCoin] = useState<NationCoinRow | null>(null);
+
+  return (
+    <>
+      {layout === "bottom" ? (
+        <DesktopBottomCountryPanel
+          state={state}
+          onDismiss={onDismiss}
+          onChart={setChartCoin}
+        />
+      ) : (
+        <DesktopCountryPanel
+          state={state}
+          onDismiss={onDismiss}
+          onChart={setChartCoin}
+        />
+      )}
+      <DexscreenerChartModal
+        open={chartCoin != null}
+        onClose={() => setChartCoin(null)}
+        symbol={chartCoin?.baseSymbol ?? ""}
+        pairLabel={chartCoin?.pairLabel}
+        chartAddress={
+          chartCoin ? chartAddressFor(chartCoin) : undefined
+        }
+      />
+    </>
+  );
 }

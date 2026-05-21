@@ -1,9 +1,11 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import type { GlobeCanvasHandle } from "@/components/globe/GlobeCanvas";
 import type { CountryHoverState } from "@/components/globe/CountryHoverPanel";
 import { MobileCountrySheet } from "@/components/globe/CountryHoverPanel";
+import { DexscreenerChartModal } from "@/components/screener/dexscreener-chart-modal";
+import type { NationCoinRow } from "@/types/screener";
 import { flagEmoji } from "@/lib/flags";
 
 type MobileMapBottomChromeProps = {
@@ -15,6 +17,8 @@ export function MobileMapBottomChrome({
   globeRef,
   countryHover,
 }: MobileMapBottomChromeProps) {
+  const [chartCoin, setChartCoin] = useState<NationCoinRow | null>(null);
+
   const btnClass =
     "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-2)] font-mono text-[17px] font-medium text-[var(--foreground-secondary)] transition-[background,transform] active:scale-[0.94] hover:bg-[var(--surface-3)]";
 
@@ -25,7 +29,11 @@ export function MobileMapBottomChrome({
     >
       {countryHover && countryHover.coins.length > 0 ? (
         <div className="pointer-events-auto px-3 pb-2">
-          <MobileCountrySheet state={countryHover} embedded />
+          <MobileCountrySheet
+            state={countryHover}
+            embedded
+            onChart={setChartCoin}
+          />
         </div>
       ) : null}
 
@@ -81,6 +89,15 @@ export function MobileMapBottomChrome({
           </div>
         </div>
       </div>
+      <DexscreenerChartModal
+        open={chartCoin != null}
+        onClose={() => setChartCoin(null)}
+        symbol={chartCoin?.baseSymbol ?? ""}
+        pairLabel={chartCoin?.pairLabel}
+        chartAddress={
+          chartCoin?.chartAddress ?? chartCoin?.contractAddress
+        }
+      />
     </div>
   );
 }
