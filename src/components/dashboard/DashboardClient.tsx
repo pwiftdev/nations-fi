@@ -70,9 +70,11 @@ function filterRows(rows: NationCoinRow[], q: string): NationCoinRow[] {
 
 function DataStatusBanners({
   loading,
+  refreshing,
   error,
 }: {
   loading: boolean;
+  refreshing?: boolean;
   error: string | null;
 }) {
   return (
@@ -83,6 +85,15 @@ function DataStatusBanners({
           role="status"
         >
           Loading markets from DexScreener…
+        </p>
+      ) : null}
+      {refreshing && !loading && !error ? (
+        <p
+          className="shrink-0 border-b border-[var(--border)]/60 bg-[var(--surface-1)]/80 px-4 py-1 text-center text-[10px] text-[var(--muted-faint)]"
+          role="status"
+          aria-live="polite"
+        >
+          Updating markets…
         </p>
       ) : null}
       {error ? (
@@ -117,41 +128,74 @@ function DashboardContent() {
   const [watchlistTick, setWatchlistTick] = useState(0);
   const [coins, setCoins] = useState<NationCoinRow[]>([]);
   const [coinsLoading, setCoinsLoading] = useState(true);
+  const [coinsRefreshing, setCoinsRefreshing] = useState(false);
   const [coinsError, setCoinsError] = useState<string | null>(null);
+  const hasLoadedOnceRef = useRef(false);
+
+  const loadMarkets = useCallback(async (signal: AbortSignal) => {
+    const isInitial = !hasLoadedOnceRef.current;
+    if (isInitial) {
+      setCoinsLoading(true);
+    } else {
+      setCoinsRefreshing(true);
+    }
+
+    try {
+      const res = await fetch("/api/dexscreener/tokens", {
+        cache: "no-store",
+        signal,
+      });
+      const body: unknown = await res.json();
+      const parsed = body as { rows?: NationCoinRow[]; error?: string };
+      if (!res.ok) {
+        throw new Error(parsed.error ?? `HTTP ${res.status}`);
+      }
+      if (!Array.isArray(parsed.rows)) {
+        throw new Error("Invalid response");
+      }
+      setCoins(parsed.rows);
+      setCoinsError(null);
+      hasLoadedOnceRef.current = true;
+    } catch (e) {
+      if (signal.aborted) return;
+      const message =
+        e instanceof Error ? e.message : "Failed to load markets";
+      if (!hasLoadedOnceRef.current) {
+        setCoins([]);
+      }
+      setCoinsError(message);
+    } finally {
+      if (signal.aborted) return;
+      setCoinsLoading(false);
+      setCoinsRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setCoinsLoading(true);
-      setCoinsError(null);
-      try {
-        const res = await fetch("/api/dexscreener/tokens", {
-          cache: "no-store",
-        });
-        const body: unknown = await res.json();
-        const parsed = body as { rows?: NationCoinRow[]; error?: string };
-        if (!res.ok) {
-          throw new Error(parsed.error ?? `HTTP ${res.status}`);
-        }
-        if (!Array.isArray(parsed.rows)) {
-          throw new Error("Invalid response");
-        }
-        if (!cancelled) {
-          setCoins(parsed.rows);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setCoins([]);
-          setCoinsError(e instanceof Error ? e.message : "Failed to load markets");
-        }
-      } finally {
-        if (!cancelled) setCoinsLoading(false);
+    const abort = new AbortController();
+    const { signal } = abort;
+
+    void loadMarkets(signal);
+
+    const intervalMs = FEATURES.marketsRefreshIntervalMs;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void loadMarkets(signal);
+    }, intervalMs);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadMarkets(signal);
       }
-    })();
-    return () => {
-      cancelled = true;
     };
-  }, []);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+      abort.abort();
+    };
+  }, [loadMarkets]);
 
   useEffect(() => {
     const stored = parseLabelMode(
@@ -346,7 +390,11 @@ function DashboardContent() {
           onChange={setMobileTab}
           screenerCount={sorted.length}
         />
-        <DataStatusBanners loading={coinsLoading} error={coinsError} />
+        <DataStatusBanners
+          loading={coinsLoading}
+          refreshing={coinsRefreshing}
+          error={coinsError}
+        />
 
         {mobileTab === "screener" ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--surface-0)] pb-[env(safe-area-inset-bottom,0px)]">
@@ -408,7 +456,11 @@ function DashboardContent() {
         </div>
 
         <div className="shrink-0 bg-[var(--surface-0)] pb-3">
-          <DataStatusBanners loading={coinsLoading} error={coinsError} />
+          <DataStatusBanners
+          loading={coinsLoading}
+          refreshing={coinsRefreshing}
+          error={coinsError}
+        />
           <ScreenerDock
             {...screenerProps}
             layout="dock"

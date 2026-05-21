@@ -7,4 +7,6 @@ export const FEATURES = {
   showMapHud: true,
   showWatchlistColumn: true,
   showNationUrlSync: true,
+  /** DexScreener screener poll interval (ms). */
+  marketsRefreshIntervalMs: 5_000,
 } as const;

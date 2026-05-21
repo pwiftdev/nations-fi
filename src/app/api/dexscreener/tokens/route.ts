@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import {
   DEXSCREENER_CHAIN_ID,
   getListedTokenEntries,
@@ -14,7 +16,7 @@ async function fetchPairs(
   addresses: string[],
 ): Promise<DexScreenerPair[]> {
   const url = `https://api.dexscreener.com/tokens/v1/${chainId}/${addresses.join(",")}`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`DexScreener HTTP ${res.status}`);
   }
