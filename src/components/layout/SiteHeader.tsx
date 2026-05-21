@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useState, type ReactNode } from "react";
 import { FEATURES } from "@/config/features";
+import { NATIONS_TOKEN_CA } from "@/config/site";
 
 const ANNOUNCE_STRIP_CLASS =
   "inline-flex shrink-0 items-center gap-0 py-2 font-brand text-[10px] font-semibold uppercase tracking-[0.08em] text-[#e8f4ec] sm:text-[11px] sm:tracking-[0.1em] md:text-[12px] md:tracking-[0.12em]";
@@ -86,6 +87,45 @@ function AnnouncementStrip({ repeat = 3 }: { repeat?: number }) {
         </Fragment>
       ))}
     </span>
+  );
+}
+
+function CopyCaButton() {
+  const [copied, setCopied] = useState(false);
+
+  const copyCa = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(NATIONS_TOKEN_CA);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }, []);
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copyCa()}
+      title={NATIONS_TOKEN_CA}
+      className="hidden min-h-[36px] items-center gap-1.5 rounded-md border border-[var(--brand-fi)]/35 bg-[var(--brand-fi-dim)] px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-fi-soft)] transition-[background,border-color,color,transform] hover:border-[var(--brand-fi)]/55 hover:bg-[var(--brand-fi-dim)] hover:text-[var(--brand-fi)] active:scale-[0.98] md:inline-flex"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <rect x="9" y="9" width="13" height="13" rx="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+      {copied ? "Copied!" : "Copy CA"}
+    </button>
   );
 }
 
@@ -193,6 +233,8 @@ export function SiteHeader() {
             <span className="sm:hidden">List Token</span>
             <span className="hidden sm:inline">List your token</span>
           </Link>
+
+          <CopyCaButton />
 
           {/* Methodology — shown from sm */}
           <Link
