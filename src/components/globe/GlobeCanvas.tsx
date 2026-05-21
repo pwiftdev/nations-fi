@@ -86,15 +86,15 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     midY: number;
   } | null>(null);
 
-  // Single-touch drag state.
+  // Single-touch drag state (incremental deltas for smooth continuous pan).
   const dragRef = useRef<{
     active: boolean;
-    startX: number;
-    startY: number;
-    pan0X: number;
-    pan0Y: number;
+    pointerId: number;
+    lastX: number;
+    lastY: number;
     maxDist: number;
   } | null>(null);
+  const isDraggingRef = useRef(false);
   // Tracks max drag distance so we can distinguish tap from drag.
   const lastPointerMaxDist = useRef(0);
 
@@ -252,6 +252,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
 
   const onCountryPathEnter = useCallback(
     (poly: PolygonDatum, rsmKey: string) => {
+      if (isDraggingRef.current) return;
       flushClearHover();
       hoveredFeatureRef.current = poly;
       setHoveredRsmKey(rsmKey);
@@ -443,29 +444,27 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
   // ── Pointer / touch event handlers ────────────────────────────────────────
 
   const onPointerDown = (e: React.PointerEvent) => {
-    // Allow all pointer types (mouse left = 0, touch = 0, second touch = -1)
-    // Only filter out explicit right/middle mouse clicks.
     if (e.button > 0) return;
 
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    svgRef.current?.setPointerCapture(e.pointerId);
+    containerRef.current?.setPointerCapture(e.pointerId);
 
     const pointerCount = pointersRef.current.size;
 
     if (pointerCount === 1) {
-      // Begin single-finger drag.
       lastPointerMaxDist.current = 0;
+      isDraggingRef.current = false;
       dragRef.current = {
         active: true,
-        startX: e.clientX,
-        startY: e.clientY,
-        pan0X: panRef.current.x,
-        pan0Y: panRef.current.y,
+        pointerId: e.pointerId,
+        lastX: e.clientX,
+        lastY: e.clientY,
         maxDist: 0,
       };
       lastPinchRef.current = null;
+      if (e.pointerType === "touch") e.preventDefault();
     } else if (pointerCount === 2) {
-      // Second finger down — switch to pinch mode, cancel drag.
+      isDraggingRef.current = true;
       dragRef.current = null;
       const pts = [...pointersRef.current.values()];
       const [p0, p1] = pts;
@@ -474,6 +473,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
       const midX = (p0.x + p1.x) / 2;
       const midY = (p0.y + p1.y) / 2;
       lastPinchRef.current = { dist, midX, midY };
+      if (e.pointerType === "touch") e.preventDefault();
     }
   };
 
@@ -534,28 +534,40 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
       );
 
       lastPinchRef.current = { dist: newDist, midX: newMidX, midY: newMidY };
+      if (e.pointerType === "touch") e.preventDefault();
     } else if (pointerCount === 1) {
-      // ── Single-finger pan ────────────────────────────────────────────────
       const d = dragRef.current;
-      if (!d?.active) return;
-      const dx = e.clientX - d.startX;
-      const dy = e.clientY - d.startY;
-      d.maxDist = Math.max(d.maxDist, Math.hypot(dx, dy));
-      setPan({
-        x: d.pan0X + dx,
-        y: d.pan0Y + dy,
-      });
+      if (!d?.active || d.pointerId !== e.pointerId) return;
+
+      const dx = e.clientX - d.lastX;
+      const dy = e.clientY - d.lastY;
+      if (dx !== 0 || dy !== 0) {
+        isDraggingRef.current = true;
+        d.maxDist += Math.hypot(dx, dy);
+        const nextPan = {
+          x: panRef.current.x + dx,
+          y: panRef.current.y + dy,
+        };
+        panRef.current = nextPan;
+        setPan(nextPan);
+        d.lastX = e.clientX;
+        d.lastY = e.clientY;
+      }
+      if (e.pointerType === "touch") e.preventDefault();
     }
   };
 
-  const onPointerUp = (e: React.PointerEvent) => {
+  const endPointer = (e: React.PointerEvent) => {
     const d = dragRef.current;
-    if (d) lastPointerMaxDist.current = d.maxDist;
+    if (d?.pointerId === e.pointerId) {
+      lastPointerMaxDist.current = d.maxDist;
+      dragRef.current = null;
+    }
 
     pointersRef.current.delete(e.pointerId);
-    const svg = svgRef.current;
-    if (svg?.hasPointerCapture?.(e.pointerId)) {
-      svg.releasePointerCapture(e.pointerId);
+    const el = containerRef.current;
+    if (el?.hasPointerCapture?.(e.pointerId)) {
+      el.releasePointerCapture(e.pointerId);
     }
 
     const remaining = pointersRef.current.size;
@@ -563,28 +575,35 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     if (remaining === 0) {
       dragRef.current = null;
       lastPinchRef.current = null;
+      isDraggingRef.current = false;
     } else if (remaining === 1) {
-      // Lifted one finger during pinch — switch back to single-finger pan
-      // but set maxDist high so the next pointerUp doesn't fire a click.
       lastPinchRef.current = null;
       lastPointerMaxDist.current = 100;
-      const [[, pos]] = [...pointersRef.current.entries()];
-      if (pos) {
+      const [remainingId, pos] = [...pointersRef.current.entries()][0] ?? [];
+      if (pos != null && remainingId != null) {
         dragRef.current = {
           active: true,
-          startX: pos.x,
-          startY: pos.y,
-          pan0X: panRef.current.x,
-          pan0Y: panRef.current.y,
+          pointerId: remainingId,
+          lastX: pos.x,
+          lastY: pos.y,
           maxDist: 0,
         };
       }
     }
   };
 
-  const onPointerLeaveSvg = (e: React.PointerEvent) => {
-    onPointerUp(e);
-  };
+  // Block native touch scrolling/zooming on the map while dragging (iOS Safari).
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const blockTouch = (e: TouchEvent) => {
+      if (isDraggingRef.current || pointersRef.current.size > 0) {
+        e.preventDefault();
+      }
+    };
+    el.addEventListener("touchmove", blockTouch, { passive: false });
+    return () => el.removeEventListener("touchmove", blockTouch);
+  }, []);
 
   return (
     <div
@@ -593,7 +612,12 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
       role="application"
       aria-label="Interactive world map. Use arrow keys to pan when focused, plus and minus to zoom."
       onKeyDown={onMapKeyDown}
-      className={`relative touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-0)] ${className ?? ""}`}
+      className={`relative touch-none select-none overscroll-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-0)] ${className ?? ""}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endPointer}
+      onPointerCancel={endPointer}
+      onLostPointerCapture={endPointer}
     >
       <svg
         ref={svgRef}
@@ -602,11 +626,6 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
         className="nf-map-svg block cursor-grab bg-[var(--map-ocean-b)] active:cursor-grabbing"
         role="img"
         aria-label="World map of nation-sector listings"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerLeaveSvg}
-        onPointerCancel={onPointerUp}
       >
         <defs>
           <radialGradient id="nf-vignette" cx="50%" cy="50%" r="78%">
