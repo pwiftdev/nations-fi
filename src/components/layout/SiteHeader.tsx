@@ -3,17 +3,104 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { FEATURES } from "@/config/features";
 
+const ANNOUNCE_STRIP_CLASS =
+  "inline-flex shrink-0 items-center gap-0 py-2 font-brand text-[10px] font-semibold uppercase tracking-[0.08em] text-[#e8f4ec] sm:text-[11px] sm:tracking-[0.1em] md:text-[12px] md:tracking-[0.12em]";
+
+const ANNOUNCE_HIGHLIGHT =
+  "bg-gradient-to-r from-[var(--accent)] to-[var(--accent-secondary)] bg-clip-text text-transparent drop-shadow-[0_0_14px_rgba(45,212,122,0.4)]";
+
+const ANNOUNCE_GOLD =
+  "text-[var(--brand-fi)] drop-shadow-[0_0_12px_rgba(240,180,41,0.25)]";
+
+/** Each phrase is one inline run so spaces are never lost between flex children. */
+function AnnouncePhrase({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline shrink-0 whitespace-nowrap">{children}</span>
+  );
+}
+
+const ANNOUNCE_ITEMS = [
+  {
+    id: "wc",
+    node: (
+      <AnnouncePhrase>
+        {"FIFA World Cup 2026 is "}
+        <span className={ANNOUNCE_HIGHLIGHT}>NEAR</span>
+      </AnnouncePhrase>
+    ),
+  },
+  {
+    id: "native",
+    node: (
+      <AnnouncePhrase>
+        <span className={ANNOUNCE_GOLD}>$NATIONS is our native token</span>
+      </AnnouncePhrase>
+    ),
+  },
+  {
+    id: "support",
+    node: (
+      <AnnouncePhrase>
+        <span className="text-[var(--foreground-secondary)]">
+          Support country &amp; football coins etc
+        </span>
+      </AnnouncePhrase>
+    ),
+  },
+  {
+    id: "list",
+    node: (
+      <AnnouncePhrase>
+        <span className={ANNOUNCE_GOLD}>
+          List your token on the Nations.Fi world map now!
+        </span>
+      </AnnouncePhrase>
+    ),
+  },
+] as const;
+
+function AnnounceSeparator() {
+  return (
+    <span
+      className="inline shrink-0 px-4 text-[var(--accent)]/50 sm:px-5"
+      aria-hidden
+    >
+      {" · "}
+    </span>
+  );
+}
+
+/** One full strip of messages; duplicated in the track for a seamless -50% loop. */
+function AnnouncementStrip({ repeat = 3 }: { repeat?: number }) {
+  const sequence = Array.from({ length: repeat }, () => ANNOUNCE_ITEMS).flat();
+
+  return (
+    <span className={ANNOUNCE_STRIP_CLASS}>
+      {sequence.map((item, index) => (
+        <Fragment key={`${item.id}-${index}`}>
+          {index > 0 ? <AnnounceSeparator /> : null}
+          {item.node}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
 function AnnouncementBanner() {
-  const segmentClass =
-    "inline-flex shrink-0 items-center gap-2 px-8 py-2 font-brand text-[10px] font-semibold uppercase tracking-[0.14em] text-[#e8f4ec] sm:gap-3 sm:px-10 sm:text-[11px] sm:tracking-[0.18em] md:text-[12px] md:tracking-[0.2em]";
+  const ariaText = [
+    "FIFA World Cup 2026 is near.",
+    "$NATIONS is our native token.",
+    "Support country and football coins etc.",
+    "List your token on the Nations.Fi world map now.",
+  ].join(" ");
 
   return (
     <div
       className="nf-announce-banner relative z-40 shrink-0 overflow-hidden"
-      aria-label="FIFA World Cup 2026 is NEAR. List your token on the Nations.Fi world map now."
+      aria-label={ariaText}
     >
       <div
         className="nf-announce-fade-l pointer-events-none absolute inset-y-0 left-0 z-10 w-14 sm:w-20"
@@ -24,20 +111,8 @@ function AnnouncementBanner() {
         aria-hidden
       />
       <div className="nf-announce-track">
-        {[0, 1].map((i) => (
-          <span key={i} className={segmentClass} aria-hidden>
-            <span>FIFA World Cup 2026 is</span>{" "}
-            <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent-secondary)] bg-clip-text text-transparent drop-shadow-[0_0_14px_rgba(45,212,122,0.4)]">
-              NEAR
-            </span>
-            <span className="px-2 text-[var(--accent)]/50 sm:px-3" aria-hidden>
-              ·
-            </span>
-            <span className="max-w-[min(92vw,560px)] text-center leading-tight text-[var(--brand-fi)] drop-shadow-[0_0_12px_rgba(240,180,41,0.25)] sm:max-w-none sm:text-left">
-              LIST YOUR TOKEN ON THE NATIONS.FI WORLD MAP NOW!
-            </span>
-          </span>
-        ))}
+        <AnnouncementStrip repeat={3} />
+        <AnnouncementStrip repeat={3} aria-hidden />
       </div>
     </div>
   );

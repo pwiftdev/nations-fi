@@ -3,11 +3,11 @@ import { AppShell } from "@/components/layout/AppShell";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
 
 export const metadata: Metadata = {
-  title: "Screener",
+  title: { absolute: "Screener · Nations.Fi" },
   description:
     "Browse nation-sector tokens on Solana with live DexScreener data, filters, and an interactive world map.",
   openGraph: {
-    title: "Nations.Fi Screener",
+    title: "Screener · Nations.Fi",
     description:
       "Browse nation-sector tokens on Solana with live DexScreener data, filters, and an interactive world map.",
   },

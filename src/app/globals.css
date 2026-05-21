@@ -181,7 +181,7 @@
   display: flex;
   width: max-content;
   will-change: transform;
-  animation: nf-announce-scroll 36s linear infinite;
+  animation: nf-announce-scroll 55s linear infinite;
 }
 
 .nf-announce-banner {
@@ -208,11 +208,22 @@
   .nf-announce-track {
     animation: none;
     width: 100%;
+    flex-wrap: wrap;
     justify-content: center;
+    gap: 0.25rem 0;
   }
 
   .nf-announce-track > :last-child {
     display: none;
+  }
+
+  .nf-announce-track > :first-child {
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    padding-inline: 1rem;
   }
 
   .nf-panel-pop {
