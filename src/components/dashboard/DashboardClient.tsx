@@ -70,11 +70,9 @@ function filterRows(rows: NationCoinRow[], q: string): NationCoinRow[] {
 
 function DataStatusBanners({
   loading,
-  refreshing,
   error,
 }: {
   loading: boolean;
-  refreshing?: boolean;
   error: string | null;
 }) {
   return (
@@ -85,15 +83,6 @@ function DataStatusBanners({
           role="status"
         >
           Loading markets from DexScreener…
-        </p>
-      ) : null}
-      {refreshing && !loading && !error ? (
-        <p
-          className="shrink-0 border-b border-[var(--border)]/60 bg-[var(--surface-1)]/80 px-4 py-1 text-center text-[10px] text-[var(--muted-faint)]"
-          role="status"
-          aria-live="polite"
-        >
-          Updating markets…
         </p>
       ) : null}
       {error ? (
@@ -124,11 +113,12 @@ function DashboardContent() {
   const [countryHover, setCountryHover] = useState<CountryHoverState | null>(
     null,
   );
+  const [pinnedCountry, setPinnedCountry] =
+    useState<CountryHoverState | null>(null);
   const [labelMode, setLabelMode] = useState<MapLabelMode>("full");
   const [watchlistTick, setWatchlistTick] = useState(0);
   const [coins, setCoins] = useState<NationCoinRow[]>([]);
   const [coinsLoading, setCoinsLoading] = useState(true);
-  const [coinsRefreshing, setCoinsRefreshing] = useState(false);
   const [coinsError, setCoinsError] = useState<string | null>(null);
   const hasLoadedOnceRef = useRef(false);
 
@@ -136,8 +126,6 @@ function DashboardContent() {
     const isInitial = !hasLoadedOnceRef.current;
     if (isInitial) {
       setCoinsLoading(true);
-    } else {
-      setCoinsRefreshing(true);
     }
 
     try {
@@ -167,7 +155,6 @@ function DashboardContent() {
     } finally {
       if (signal.aborted) return;
       setCoinsLoading(false);
-      setCoinsRefreshing(false);
     }
   }, []);
 
@@ -311,13 +298,31 @@ function DashboardContent() {
     setSortDir(key === "rank" || key === "ageHours" ? "asc" : "desc");
   };
 
-  const onCountryMapClickDesktop = useCallback(
-    (iso2: string | null) => {
-      if (!FEATURES.showNationUrlSync) return;
-      if (iso2) setNationFilter(iso2);
+  const dismissCountryPanel = useCallback(() => {
+    setPinnedCountry(null);
+    setCountryHover(null);
+    globeRef.current?.dismissCountryPanel();
+  }, []);
+
+  const handleCountryHover = useCallback(
+    (state: CountryHoverState | null) => {
+      if (state === null && pinnedCountry) return;
+      setCountryHover(state);
     },
-    [setNationFilter],
+    [pinnedCountry],
   );
+
+  const handleCountryPin = useCallback((state: CountryHoverState) => {
+    setPinnedCountry(state);
+    setCountryHover(state);
+  }, []);
+
+  const handleCountryUnpin = useCallback(() => {
+    setPinnedCountry(null);
+    setCountryHover(null);
+  }, []);
+
+  const mapCountryPanel = pinnedCountry ?? countryHover;
 
   const onToggleWatchlist = useCallback((id: string) => {
     if (!FEATURES.showWatchlistColumn) return;
@@ -390,11 +395,7 @@ function DashboardContent() {
           onChange={setMobileTab}
           screenerCount={sorted.length}
         />
-        <DataStatusBanners
-          loading={coinsLoading}
-          refreshing={coinsRefreshing}
-          error={coinsError}
-        />
+        <DataStatusBanners loading={coinsLoading} error={coinsError} />
 
         {mobileTab === "screener" ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--surface-0)] pb-[env(safe-area-inset-bottom,0px)]">
@@ -414,7 +415,10 @@ function DashboardContent() {
                   highlightMarkerId={highlightMarkerId}
                   onMarkerHover={setHoveredRowId}
                   allCoins={mapCoins}
-                  onCountryHover={setCountryHover}
+                  countryPanelCoins={coins}
+                  onCountryHover={handleCountryHover}
+                  onCountryPin={handleCountryPin}
+                  onCountryUnpin={handleCountryUnpin}
                   countryClickAction="panel"
                   labelMode={labelMode}
                 />
@@ -425,7 +429,7 @@ function DashboardContent() {
             ) : null}
             <MobileMapBottomChrome
               globeRef={globeRef}
-              countryHover={countryHover}
+              countryHover={mapCountryPanel}
             />
           </div>
         )}
@@ -440,27 +444,31 @@ function DashboardContent() {
             highlightMarkerId={highlightMarkerId}
             onMarkerHover={setHoveredRowId}
             allCoins={mapCoins}
-            onCountryHover={setCountryHover}
-            onCountryMapClick={onCountryMapClickDesktop}
+            countryPanelCoins={coins}
+            onCountryHover={handleCountryHover}
+            onCountryPin={handleCountryPin}
+            onCountryUnpin={handleCountryUnpin}
+            countryClickAction="panel"
             labelMode={labelMode}
           />
           {FEATURES.showMapHud ? (
             <MapHud show labelMode={labelMode} onCycleLabels={cycleLabels} />
           ) : null}
-          {countryHover ? <CountryHoverPanel state={countryHover} /> : null}
+          {mapCountryPanel ? (
+            <CountryHoverPanel
+              state={mapCountryPanel}
+              onDismiss={dismissCountryPanel}
+            />
+          ) : null}
           <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center px-4">
             <p className="rounded-full border border-[var(--border)] bg-[var(--surface-glass)] px-3 py-1 text-center font-mono text-[10px] tracking-wide text-[var(--muted)] backdrop-blur-md">
-              Drag · Scroll to zoom · Click country to filter · Esc to reset
+              Drag · Scroll to zoom · Click country to lock panel · Esc to reset
             </p>
           </div>
         </div>
 
         <div className="shrink-0 bg-[var(--surface-0)] pb-3">
-          <DataStatusBanners
-          loading={coinsLoading}
-          refreshing={coinsRefreshing}
-          error={coinsError}
-        />
+          <DataStatusBanners loading={coinsLoading} error={coinsError} />
           <ScreenerDock
             {...screenerProps}
             layout="dock"

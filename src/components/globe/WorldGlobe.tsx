@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { forwardRef } from "react";
+import { NationsFiWordmark } from "@/components/layout/NationsFiWordmark";
 import type { GlobeCanvasHandle, GlobeCanvasProps } from "./GlobeCanvas";
 
 const DynamicGlobe = dynamic(
@@ -19,8 +20,8 @@ const DynamicGlobe = dynamic(
             <div className="absolute inset-[3px] rounded-full bg-[var(--brand-fi-dim)] opacity-50" />
           </div>
           <div className="text-center">
-            <p className="font-brand text-[12px] font-semibold tracking-wide text-[var(--foreground-secondary)]">
-              Nations<span className="text-[var(--brand-fi)]">.Fi</span>
+            <p className="text-[var(--foreground-secondary)]">
+              <NationsFiWordmark size="sm" className="inline-block" />
             </p>
             <p className="mt-1 text-[11px] text-[var(--muted)]">
               Loading map…

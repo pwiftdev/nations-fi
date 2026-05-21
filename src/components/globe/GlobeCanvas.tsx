@@ -28,6 +28,7 @@ type PolygonDatum = Feature<Geometry, Record<string, unknown>>;
 
 export type GlobeCanvasHandle = {
   resetView: () => void;
+  dismissCountryPanel: () => void;
   flyToLngLat: (lng: number, lat: number, targetZoom?: number) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -39,13 +40,16 @@ export interface GlobeCanvasProps {
   highlightMarkerId: string | null;
   onMarkerHover?: (id: string | null) => void;
   allCoins: NationCoinRow[];
+  /** Coins used for the country panel list (defaults to allCoins). Pass full screener rows. */
+  countryPanelCoins?: NationCoinRow[];
   onCountryHover?: (state: CountryHoverState | null) => void;
-  /**
-   * When user clicks a country (after zoom-to-fit).
-   * `filter` — calls onCountryMapClick (desktop: URL nation filter).
-   * `panel` — opens country hover panel only (mobile); no screener filter.
-   */
+  /** Fired when user taps/clicks a country to lock the panel open. */
+  onCountryPin?: (state: CountryHoverState) => void;
+  /** Fired when the locked panel is dismissed (map background, Esc, Close). */
+  onCountryUnpin?: () => void;
+  /** Optional: apply nation filter to screener when countryClickAction is `filter`. */
   onCountryMapClick?: (iso2: string | null) => void;
+  /** `panel` — click pins country panel; `filter` — click also filters screener URL. */
   countryClickAction?: "filter" | "panel";
   labelMode?: MapLabelMode;
   className?: string;
@@ -62,15 +66,19 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
       highlightMarkerId,
       onMarkerHover,
       allCoins,
+      countryPanelCoins,
       onCountryHover,
+      onCountryPin,
+      onCountryUnpin,
       onCountryMapClick,
-      countryClickAction = "filter",
+      countryClickAction = "panel",
       labelMode = "full",
       className,
     },
     ref,
   ) {
   const panelTapOnly = countryClickAction === "panel";
+  const panelCoinRows = countryPanelCoins ?? allCoins;
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [dims, setDims] = useState({ width: 800, height: 480 });
@@ -102,8 +110,14 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     maxDist: number;
   } | null>(null);
   const isDraggingRef = useRef(false);
-  /** Mobile tap: keep country panel open until user taps outside countries. */
-  const stickyCountryKeyRef = useRef<string | null>(null);
+  /** Locked country after tap/click — panel stays until user clicks elsewhere. */
+  const [pinnedCountryKey, setPinnedCountryKey] = useState<string | null>(null);
+  const pinnedCountryKeyRef = useRef<string | null>(null);
+  pinnedCountryKeyRef.current = pinnedCountryKey;
+  const pressedCountryRef = useRef<{
+    key: string;
+    feature: PolygonDatum;
+  } | null>(null);
   // Tracks max drag distance so we can distinguish tap from drag.
   const lastPointerMaxDist = useRef(0);
 
@@ -249,42 +263,96 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     }
   }, []);
 
-  const clearCountryHover = useCallback(() => {
-    stickyCountryKeyRef.current = null;
+  const clearHoverPreview = useCallback(() => {
+    if (pinnedCountryKeyRef.current) return;
     hoveredFeatureRef.current = null;
     setHoveredRsmKey(null);
     onCountryHover?.(null);
   }, [onCountryHover]);
 
+  const unpinCountry = useCallback(() => {
+    setPinnedCountryKey(null);
+    pinnedCountryKeyRef.current = null;
+    pressedCountryRef.current = null;
+    hoveredFeatureRef.current = null;
+    setHoveredRsmKey(null);
+    onCountryUnpin?.();
+  }, [onCountryUnpin]);
+
   const scheduleClearHover = useCallback(() => {
-    if (panelTapOnly && stickyCountryKeyRef.current) return;
+    if (pinnedCountryKeyRef.current) return;
     flushClearHover();
     clearHoverTimer.current = setTimeout(() => {
-      clearCountryHover();
+      clearHoverPreview();
       clearHoverTimer.current = null;
     }, 140);
-  }, [clearCountryHover, flushClearHover, panelTapOnly]);
+  }, [clearHoverPreview, flushClearHover]);
+
+  const buildCountryHoverState = useCallback(
+    (poly: PolygonDatum): CountryHoverState => {
+      const f = poly as CountryPolygonFeature;
+      const iso2 = polygonFeatureToIso2(f);
+      const neName = String(f.properties?.name ?? "");
+      const matched = panelCoinRows.filter((c) =>
+        iso2
+          ? c.nationCode.toUpperCase() === iso2.toUpperCase()
+          : c.nationName === neName,
+      );
+      return {
+        iso2: iso2 ?? null,
+        displayName: countryDisplayName(iso2, neName),
+        coins: matched,
+      };
+    },
+    [panelCoinRows],
+  );
+
+  const pinCountry = useCallback(
+    (feature: PolygonDatum, rsmKey: string) => {
+      flushClearHover();
+      setPinnedCountryKey(rsmKey);
+      pinnedCountryKeyRef.current = rsmKey;
+      hoveredFeatureRef.current = feature;
+      setHoveredRsmKey(rsmKey);
+      const state = buildCountryHoverState(feature);
+      onCountryPin?.(state);
+      onCountryHover?.(state);
+      return state;
+    },
+    [buildCountryHoverState, flushClearHover, onCountryHover, onCountryPin],
+  );
+
+  const refreshPinnedPanel = useCallback(() => {
+    if (!hoveredFeatureRef.current || !pinnedCountryKeyRef.current) return;
+    const state = buildCountryHoverState(hoveredFeatureRef.current);
+    onCountryPin?.(state);
+    onCountryHover?.(state);
+  }, [buildCountryHoverState, onCountryHover, onCountryPin]);
+
+  useEffect(() => {
+    if (!hoveredFeatureRef.current) return;
+    if (pinnedCountryKeyRef.current) {
+      refreshPinnedPanel();
+      return;
+    }
+    onCountryHover?.(buildCountryHoverState(hoveredFeatureRef.current));
+  }, [
+    buildCountryHoverState,
+    onCountryHover,
+    panelCoinRows,
+    refreshPinnedPanel,
+  ]);
 
   const onCountryPathEnter = useCallback(
     (poly: PolygonDatum, rsmKey: string) => {
       if (isDraggingRef.current) return;
+      if (pinnedCountryKeyRef.current) return;
       flushClearHover();
       hoveredFeatureRef.current = poly;
       setHoveredRsmKey(rsmKey);
-      const f = poly as CountryPolygonFeature;
-      const iso2 = polygonFeatureToIso2(f);
-      const neName = String(f.properties?.name ?? "");
-      const coins = allCoins.filter((c) =>
-        iso2 ? c.nationCode === iso2 : c.nationName === neName,
-      );
-      const displayName = countryDisplayName(iso2, neName);
-      onCountryHover?.({
-        iso2: iso2 ?? null,
-        displayName,
-        coins,
-      });
+      onCountryHover?.(buildCountryHoverState(poly));
     },
-    [allCoins, flushClearHover, onCountryHover],
+    [buildCountryHoverState, flushClearHover, onCountryHover],
   );
 
   const onCountryPathLeave = useCallback(() => {
@@ -294,7 +362,8 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
   const resetView = useCallback(() => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
-  }, []);
+    unpinCountry();
+  }, [unpinCountry]);
 
   const flyToLngLat = useCallback(
     (lng: number, lat: number, targetZoom = 4.2) => {
@@ -312,18 +381,68 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     [dims.height, dims.width, projectionFit.baseScale, projectionFit.baseTx, projectionFit.baseTy],
   );
 
+  const dismissCountryPanel = useCallback(() => {
+    unpinCountry();
+  }, [unpinCountry]);
+
+  const applyZoomAtScreenPoint = useCallback(
+    (screenX: number, screenY: number, scaleFactor: number) => {
+      const curZoom = zoomRef.current;
+      const curPan = panRef.current;
+      const newZoom = clamp(curZoom * scaleFactor, 0.5, 10);
+      if (Math.abs(newZoom - curZoom) < 1e-9) return;
+
+      const zoomRatio = newZoom / curZoom;
+      const pf = projectionFitRef.current;
+      const newPan = {
+        x:
+          screenX -
+          pf.baseTx -
+          (screenX - pf.baseTx - curPan.x) * zoomRatio,
+        y:
+          screenY -
+          pf.baseTy -
+          (screenY - pf.baseTy - curPan.y) * zoomRatio,
+      };
+      setZoom(newZoom);
+      setPan(newPan);
+    },
+    [],
+  );
+
+  const getMapCenterScreen = useCallback(() => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      return { x: rect.width / 2, y: rect.height / 2 };
+    }
+    return { x: dims.width / 2, y: dims.height / 2 };
+  }, [dims.width, dims.height]);
+
   useImperativeHandle(
     ref,
     () => ({
       resetView,
+      dismissCountryPanel,
       flyToLngLat,
-      zoomIn: () => setZoom((z) => clamp(z * 1.15, 0.5, 10)),
-      zoomOut: () => setZoom((z) => clamp(z / 1.15, 0.5, 10)),
+      zoomIn: () => {
+        const { x, y } = getMapCenterScreen();
+        applyZoomAtScreenPoint(x, y, 1.15);
+      },
+      zoomOut: () => {
+        const { x, y } = getMapCenterScreen();
+        applyZoomAtScreenPoint(x, y, 1 / 1.15);
+      },
       focus: () => {
         containerRef.current?.focus({ preventScroll: true });
       },
     }),
-    [flyToLngLat, resetView],
+    [
+      applyZoomAtScreenPoint,
+      dismissCountryPanel,
+      flyToLngLat,
+      getMapCenterScreen,
+      resetView,
+    ],
   );
 
   const zoomToCountry = useCallback(
@@ -376,43 +495,36 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     [dims.height, dims.width, projectionFit.baseScale, projectionFit.baseTx, projectionFit.baseTy],
   );
 
-  const onCountryPathClick = useCallback(
-    (e: React.MouseEvent, feature: PolygonDatum, rsmKey: string) => {
-      e.stopPropagation();
-      if (lastPointerMaxDist.current > 8) return;
-
-      flushClearHover();
-      stickyCountryKeyRef.current = rsmKey;
-      onCountryPathEnter(feature, rsmKey);
+  const tryPinFromPress = useCallback(
+    (feature: PolygonDatum, rsmKey: string) => {
+      if (lastPointerMaxDist.current > 12) return false;
+      pinCountry(feature, rsmKey);
       zoomToCountry(feature);
-
       if (!panelTapOnly) {
         const poly = feature as CountryPolygonFeature;
         const iso2 = polygonFeatureToIso2(poly);
         onCountryMapClick?.(iso2 ?? null);
       }
+      return true;
     },
-    [
-      flushClearHover,
-      onCountryMapClick,
-      onCountryPathEnter,
-      panelTapOnly,
-      zoomToCountry,
-    ],
+    [onCountryMapClick, panelTapOnly, pinCountry, zoomToCountry],
   );
 
-  // ── Wheel zoom (desktop) ───────────────────────────────────────────────────
+  // ── Wheel zoom (desktop) — zoom toward cursor, keep point under cursor fixed ──
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.06 : 1 / 1.06;
-      setZoom((z) => clamp(z * factor, 0.5, 10));
+      const rect = el.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.14 : 1 / 1.14;
+      applyZoomAtScreenPoint(sx, sy, factor);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [applyZoomAtScreenPoint]);
 
   // ── Keyboard navigation ────────────────────────────────────────────────────
   useEffect(() => {
@@ -438,12 +550,14 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
       const step = 42;
       if (e.key === "+" || e.key === "=") {
         e.preventDefault();
-        setZoom((z) => clamp(z * 1.12, 0.5, 10));
+        const { x, y } = getMapCenterScreen();
+        applyZoomAtScreenPoint(x, y, 1.12);
         return;
       }
       if (e.key === "-" || e.key === "_") {
         e.preventDefault();
-        setZoom((z) => clamp(z / 1.12, 0.5, 10));
+        const { x, y } = getMapCenterScreen();
+        applyZoomAtScreenPoint(x, y, 1 / 1.12);
         return;
       }
       if (e.key === "ArrowLeft") {
@@ -466,18 +580,41 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
         setPan((p) => ({ x: p.x, y: p.y + step }));
       }
     },
-    [],
+    [applyZoomAtScreenPoint, getMapCenterScreen],
   );
 
   // ── Pointer / touch event handlers ────────────────────────────────────────
+
+  const countryPathByKey = useMemo(() => {
+    const map = new Map<string, { feature: PolygonDatum; key: string }>();
+    for (const row of countryPaths) {
+      if (!row) continue;
+      map.set(row.key, { feature: row.feature, key: row.key });
+    }
+    return map;
+  }, [countryPaths]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button > 0) return;
 
     const target = e.target as Element;
-    if (panelTapOnly && !target.closest(".nf-country-path")) {
-      flushClearHover();
-      clearCountryHover();
+    const pathEl = target.closest(".nf-country-path");
+    const panelEl = target.closest(".nf-country-panel");
+
+    if (pathEl) {
+      const key = pathEl.getAttribute("data-country-key");
+      const row = key ? countryPathByKey.get(key) : undefined;
+      pressedCountryRef.current = row ?? null;
+    } else {
+      pressedCountryRef.current = null;
+      if (!panelEl) {
+        if (pinnedCountryKeyRef.current) {
+          unpinCountry();
+        } else {
+          flushClearHover();
+          clearHoverPreview();
+        }
+      }
     }
 
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -607,9 +744,16 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     const remaining = pointersRef.current.size;
 
     if (remaining === 0) {
+      const pressed = pressedCountryRef.current;
+      const maxDist = lastPointerMaxDist.current;
+      pressedCountryRef.current = null;
       dragRef.current = null;
       lastPinchRef.current = null;
       isDraggingRef.current = false;
+
+      if (pressed && maxDist <= 12) {
+        tryPinFromPress(pressed.feature, pressed.key);
+      }
     } else if (remaining === 1) {
       lastPinchRef.current = null;
       lastPointerMaxDist.current = 100;
@@ -698,18 +842,14 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
                 key={row.key}
                 d={row.d}
                 className="nf-country-path cursor-pointer"
-                onClick={(e) => onCountryPathClick(e, row.feature, row.key)}
+                data-country-key={row.key}
                 fill={fill}
                 stroke={stroke}
                 strokeWidth={strokeWidth}
                 vectorEffect="non-scaling-stroke"
                 style={{ outline: "none" }}
-                onMouseEnter={
-                  panelTapOnly
-                    ? undefined
-                    : () => onCountryPathEnter(row.feature, row.key)
-                }
-                onMouseLeave={panelTapOnly ? undefined : onCountryPathLeave}
+                onMouseEnter={() => onCountryPathEnter(row.feature, row.key)}
+                onMouseLeave={onCountryPathLeave}
               />
             );
           })}

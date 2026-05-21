@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useState, type ReactNode } from "react";
 import { FEATURES } from "@/config/features";
+import { NationsFiWordmark } from "@/components/layout/NationsFiWordmark";
 
 const ANNOUNCE_STRIP_CLASS =
   "inline-flex shrink-0 items-center gap-0 py-2 font-brand text-[10px] font-semibold uppercase tracking-[0.08em] text-[#e8f4ec] sm:text-[11px] sm:tracking-[0.1em] md:text-[12px] md:tracking-[0.12em]";
@@ -148,10 +149,7 @@ export function SiteHeader() {
               priority
             />
           </span>
-          <span className="font-brand text-[17px] font-semibold tracking-[-0.02em] text-[var(--foreground)]">
-            Nations
-            <span className="text-[var(--brand-fi)]">.Fi</span>
-          </span>
+          <NationsFiWordmark size="md" />
           <span className="hidden h-4 w-px bg-[var(--border-strong)] sm:block" aria-hidden />
           <span className="hidden max-w-[220px] truncate font-sans text-[11px] font-medium leading-snug tracking-wide text-[var(--muted)] sm:inline">
             Nation-sector markets on{" "}

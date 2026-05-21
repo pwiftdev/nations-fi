@@ -138,20 +138,26 @@ export function MobileCountrySheet({
   );
 }
 
-function DesktopCountryPanel({ state }: { state: CountryHoverState }) {
+function DesktopCountryPanel({
+  state,
+  onDismiss,
+}: {
+  state: CountryHoverState;
+  onDismiss?: () => void;
+}) {
   const { iso2, displayName, coins } = state;
 
   return (
     <div
-      className="nf-panel-pop pointer-events-none absolute left-4 top-4 z-20 w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-accent)]/35 bg-[var(--surface-glass)] shadow-[0_0_40px_-12px_var(--accent-glow),var(--shadow-elevated)] backdrop-blur-xl"
+      className="nf-country-panel nf-panel-pop pointer-events-auto absolute bottom-4 left-4 top-4 z-20 flex w-[min(24rem,calc(100%-2rem))] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-accent)]/35 bg-[var(--surface-glass)] shadow-[0_0_40px_-12px_var(--accent-glow),var(--shadow-elevated)] backdrop-blur-xl"
       role="dialog"
       aria-label={`Nation sector: ${displayName}`}
     >
       <div
-        className="h-0.5 w-full bg-gradient-to-r from-[var(--accent)]/80 via-[var(--brand-fi)]/60 to-[var(--accent)]/40"
+        className="h-0.5 w-full shrink-0 bg-gradient-to-r from-[var(--accent)]/80 via-[var(--brand-fi)]/60 to-[var(--accent)]/40"
         aria-hidden
       />
-      <div className="border-b border-[var(--border)] px-4 py-3.5">
+      <div className="shrink-0 border-b border-[var(--border)] px-4 py-3.5">
         <div className="flex items-start gap-3">
           <span className="text-2xl leading-none drop-shadow-sm">
             {iso2 ? flagEmoji(iso2) : "◎"}
@@ -165,15 +171,25 @@ function DesktopCountryPanel({ state }: { state: CountryHoverState }) {
             </h2>
             <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">
               {coins.length === 0
-                ? "No listed pairs in preview data for this territory."
-                : `${coins.length} listed pair${coins.length === 1 ? "" : "s"}`}
+                ? "No listed pairs for this territory."
+                : `${coins.length} token${coins.length === 1 ? "" : "s"}`}
             </p>
           </div>
+          {onDismiss ? (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--border)] px-2 py-1 text-[10px] font-medium text-[var(--muted)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground-secondary)]"
+              aria-label="Close country panel"
+            >
+              Close
+            </button>
+          ) : null}
         </div>
       </div>
 
       {coins.length > 0 ? (
-        <ul className="max-h-[min(50vh,320px)] divide-y divide-[var(--border)] overflow-y-auto overscroll-contain">
+        <ul className="min-h-0 flex-1 divide-y divide-[var(--border)] overflow-y-auto overscroll-contain">
           {coins.map((c) => (
             <li
               key={c.id}
@@ -230,11 +246,21 @@ function DesktopCountryPanel({ state }: { state: CountryHoverState }) {
             </li>
           ))}
         </ul>
-      ) : null}
+      ) : (
+        <p className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-center text-[11px] text-[var(--muted)]">
+          No tokens mapped for this country yet.
+        </p>
+      )}
     </div>
   );
 }
 
-export function CountryHoverPanel({ state }: { state: CountryHoverState }) {
-  return <DesktopCountryPanel state={state} />;
+export function CountryHoverPanel({
+  state,
+  onDismiss,
+}: {
+  state: CountryHoverState;
+  onDismiss?: () => void;
+}) {
+  return <DesktopCountryPanel state={state} onDismiss={onDismiss} />;
 }
