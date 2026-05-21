@@ -161,10 +161,10 @@ export function SiteHeader() {
           className="flex items-center gap-1.5 sm:gap-2"
           aria-label="Primary"
         >
-          {/* Screener link — always visible, min touch target */}
+          {/* Screener — desktop only (mobile uses home tabs) */}
           <Link
             href="/"
-            className={`inline-flex min-h-[36px] items-center rounded-md px-2.5 text-[12px] font-medium transition-colors ${
+            className={`hidden min-h-[36px] items-center rounded-md px-2.5 text-[12px] font-medium transition-colors sm:inline-flex ${
               isHome
                 ? "bg-[var(--surface-2)] text-[var(--foreground)] ring-1 ring-[var(--border-strong)]"
                 : "text-[var(--muted)] hover:text-[var(--foreground-secondary)]"
@@ -216,6 +216,24 @@ export function SiteHeader() {
           <span className="hidden cursor-not-allowed rounded-md px-2 py-1 text-[12px] font-medium text-[var(--muted-faint)] lg:inline">
             API
           </span>
+
+          <a
+            href="https://x.com/NationsFi"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Nations.Fi on X"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-1)] text-[var(--muted)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] active:scale-[0.96]"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden
+            >
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
 
           {/* Mobile "more" menu — shown below sm only */}
           <div className="relative sm:hidden">
