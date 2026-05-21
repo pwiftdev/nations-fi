@@ -20,6 +20,7 @@ import {
 } from "@/lib/geo/country-from-polygon";
 import type { NationCoinRow } from "@/types/screener";
 import type { GlobeMarker } from "./globe-markers";
+import { MapTokenMarker } from "./MapTokenMarker";
 import type { CountryHoverState } from "./CountryHoverPanel";
 import type { MapLabelMode } from "@/components/globe/map-label-mode";
 
@@ -78,8 +79,10 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
   } | null>(null);
   const lastPointerMaxDist = useRef(0);
 
+  const [brokenMarkerImages, setBrokenMarkerImages] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [hoveredRsmKey, setHoveredRsmKey] = useState<string | null>(null);
-  const [cursorGlowPct, setCursorGlowPct] = useState({ x: 50, y: 48 });
   const hoveredFeatureRef = useRef<PolygonDatum | null>(null);
   const clearHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -426,32 +429,16 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     svgRef.current?.setPointerCapture(e.pointerId);
   };
 
-  const updateCursorGlow = useCallback((e: React.PointerEvent) => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const r = svg.getBoundingClientRect();
-    if (r.width < 1 || r.height < 1) return;
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    setCursorGlowPct({
-      x: clamp(x, 0, 100),
-      y: clamp(y, 0, 100),
-    });
-  }, []);
-
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
-    if (d?.active) {
-      const dx = e.clientX - d.startX;
-      const dy = e.clientY - d.startY;
-      d.maxDist = Math.max(d.maxDist, Math.hypot(dx, dy));
-      setPan({
-        x: d.pan0X + dx,
-        y: d.pan0Y + dy,
-      });
-    } else {
-      updateCursorGlow(e);
-    }
+    if (!d?.active) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    d.maxDist = Math.max(d.maxDist, Math.hypot(dx, dy));
+    setPan({
+      x: d.pan0X + dx,
+      y: d.pan0Y + dy,
+    });
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -466,24 +453,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
 
   const onPointerLeaveSvg = (e: React.PointerEvent) => {
     onPointerUp(e);
-    setCursorGlowPct({ x: 50, y: 48 });
   };
-
-  const landSea = hoveredRsmKey
-    ? {
-        oceanA: "#0c2842",
-        oceanB: "#071525",
-        landFill: "rgba(34, 211, 238, 0.11)",
-        landStroke: "rgba(94, 234, 212, 0.55)",
-        landStrokeW: 1.05,
-      }
-    : {
-        oceanA: "var(--map-ocean-a)",
-        oceanB: "var(--map-ocean-b)",
-        landFill: "rgba(15, 23, 42, 0.42)",
-        landStroke: "rgba(148, 163, 184, 0.26)",
-        landStrokeW: 0.65,
-      };
 
   return (
     <div
@@ -508,122 +478,46 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
         onPointerCancel={onPointerUp}
       >
         <defs>
-          <linearGradient id="nf-ocean" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={landSea.oceanA} />
-            <stop offset="100%" stopColor={landSea.oceanB} />
-          </linearGradient>
-          <linearGradient id="nf-ocean-shimmer-grad" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(34, 211, 238, 0)" />
-            <stop offset="45%" stopColor="rgba(34, 211, 238, 0.14)" />
-            <stop offset="55%" stopColor="rgba(252, 211, 77, 0.08)" />
-            <stop offset="100%" stopColor="rgba(34, 211, 238, 0)" />
-          </linearGradient>
-          <radialGradient
-            id="nf-cursor-glow"
-            cx={`${cursorGlowPct.x}%`}
-            cy={`${cursorGlowPct.y}%`}
-            r="62%"
-          >
-            <stop offset="0%" stopColor="rgba(34, 211, 238, 0.22)" />
-            <stop offset="38%" stopColor="rgba(34, 211, 238, 0.08)" />
-            <stop offset="100%" stopColor="rgba(2, 6, 23, 0)" />
+          <radialGradient id="nf-vignette" cx="50%" cy="50%" r="78%">
+            <stop offset="62%" stopColor="rgba(0, 0, 0, 0)" />
+            <stop offset="100%" stopColor="var(--map-vignette)" />
           </radialGradient>
-          <radialGradient id="nf-vignette" cx="50%" cy="45%" r="75%">
-            <stop offset="55%" stopColor="rgba(2, 6, 23, 0)" />
-            <stop offset="100%" stopColor="rgba(2, 6, 23, 0.45)" />
-          </radialGradient>
-          <filter id="nf-marker-glow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="1.4" result="b" />
-            <feMerge>
-              <feMergeNode in="b" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <linearGradient id="nf-coin-rim" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fff7d6" />
-            <stop offset="22%" stopColor="#fcd34d" />
-            <stop offset="48%" stopColor="#d97706" />
-            <stop offset="78%" stopColor="#b45309" />
-            <stop offset="100%" stopColor="#78350f" />
-          </linearGradient>
-          <radialGradient id="nf-coin-face" cx="38%" cy="32%" r="72%">
-            <stop offset="0%" stopColor="#fffbeb" />
-            <stop offset="28%" stopColor="#fde68a" />
-            <stop offset="55%" stopColor="#eab308" />
-            <stop offset="82%" stopColor="#ca8a04" />
-            <stop offset="100%" stopColor="#a16207" />
-          </radialGradient>
-          <radialGradient id="nf-coin-face-hi" cx="32%" cy="28%" r="75%">
-            <stop offset="0%" stopColor="#ecfeff" />
-            <stop offset="25%" stopColor="#fde68a" />
-            <stop offset="50%" stopColor="#22d3ee" />
-            <stop offset="78%" stopColor="#0e7490" />
-            <stop offset="100%" stopColor="#155e75" />
-          </radialGradient>
-          <linearGradient
-            id="nf-depth"
-            gradientUnits="objectBoundingBox"
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop offset="0%" stopColor="rgba(255,255,255,0.045)" />
-            <stop offset="18%" stopColor="rgba(255,255,255,0)" />
-            <stop offset="82%" stopColor="rgba(0,0,0,0)" />
-            <stop offset="100%" stopColor="rgba(0,0,0,0.18)" />
-          </linearGradient>
         </defs>
-        <rect width={dims.width} height={dims.height} fill="url(#nf-ocean)" />
-        <rect
-          width={dims.width}
-          height={dims.height}
-          fill="url(#nf-ocean-shimmer-grad)"
-          className="nf-map-ocean-shimmer"
-        />
-        <rect
-          width={dims.width}
-          height={dims.height}
-          fill="url(#nf-cursor-glow)"
-          style={{ pointerEvents: "none" }}
-        />
+        <rect width={dims.width} height={dims.height} fill="var(--map-ocean)" />
         <rect
           width={dims.width}
           height={dims.height}
           fill="url(#nf-vignette)"
           style={{ pointerEvents: "none" }}
         />
-        <rect
-          width={dims.width}
-          height={dims.height}
-          fill="url(#nf-depth)"
-          style={{ pointerEvents: "none" }}
-        />
         <g className="countries">
           {countryPaths.map((row) => {
             if (!row) return null;
             const isHover = hoveredRsmKey === row.key;
+            const iso2 = polygonFeatureToIso2(row.feature as CountryPolygonFeature);
+            const isListed = iso2
+              ? listedNationCodes.has(iso2.toUpperCase())
+              : false;
+            const fill = isHover
+              ? "var(--map-land-hover-fill)"
+              : isListed
+                ? "var(--map-land-listed-fill)"
+                : "var(--map-land-fill)";
+            const stroke = isHover
+              ? "var(--map-land-hover-stroke)"
+              : isListed
+                ? "var(--map-land-listed-stroke)"
+                : "var(--map-land-stroke)";
+            const strokeWidth = isHover ? 1.1 : isListed ? 0.8 : 0.6;
             return (
               <path
                 key={row.key}
                 d={row.d}
                 className="nf-country-path cursor-pointer"
                 onClick={(e) => onCountryPathClick(e, row.feature)}
-                fill={
-                  isHover
-                    ? "rgba(34, 211, 238, 0.16)"
-                    : hoveredRsmKey
-                      ? "rgba(15, 23, 42, 0.32)"
-                      : landSea.landFill
-                }
-                stroke={
-                  isHover
-                    ? "rgba(165, 243, 252, 0.88)"
-                    : hoveredRsmKey
-                      ? "rgba(100, 116, 139, 0.18)"
-                      : landSea.landStroke
-                }
-                strokeWidth={isHover ? 1.25 : hoveredRsmKey ? 0.5 : landSea.landStrokeW}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
                 vectorEffect="non-scaling-stroke"
                 style={{ outline: "none" }}
                 onMouseEnter={() => onCountryPathEnter(row.feature, row.key)}
@@ -636,23 +530,20 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
         <g className="country-labels" aria-hidden>
           {countryLabels.map((L) => {
             const isHover = hoveredRsmKey === L.key;
-            const dimOthers = hoveredRsmKey != null && !isHover;
             const labelText =
               labelMode === "iso" ? (L.iso2 ?? "—") : L.name;
             const len = labelText.length;
-            const sizeBoost = Math.min(2.2, Math.max(0, L.bboxDiag / 55));
-            let fontPx = 4.8 + zoom * 0.95 + sizeBoost;
+            const sizeBoost = Math.min(1.8, Math.max(0, L.bboxDiag / 60));
+            let fontPx = 5 + zoom * 0.85 + sizeBoost;
             if (len > 14) fontPx *= 14 / len;
             if (len > 22) fontPx *= 0.92;
-            if (labelMode === "iso") fontPx = Math.max(fontPx, 6.2);
-            fontPx = clamp(fontPx, 4.4, 12.5);
+            if (labelMode === "iso") fontPx = Math.max(fontPx, 6.4);
+            fontPx = clamp(fontPx, 4.6, 12);
             const baseOpacity =
-              0.28 +
-              0.42 * Math.min(1, L.bboxDiag / 140) +
-              (L.hasListings ? 0.12 : 0) +
-              (zoom > 1.35 ? 0.12 : 0);
-            let opacity = isHover ? 1 : clamp(baseOpacity, 0.22, 0.92);
-            if (dimOthers) opacity *= 0.32;
+              0.42 +
+              0.32 * Math.min(1, L.bboxDiag / 140) +
+              (L.hasListings ? 0.18 : 0);
+            const opacity = isHover ? 1 : clamp(baseOpacity, 0.36, 0.94);
             return (
               <text
                 key={L.key}
@@ -671,81 +562,23 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
         </g>
         ) : null}
         <g className="markers">
-          {markerPoints.map((m) => {
-            const hi = m.id === highlightMarkerId;
-            const R = hi ? 10.5 : 7.8;
-            const rimW = hi ? 1.35 : 1.1;
-            const faceR = R * 0.74;
-            const letter = (m.symbol?.trim() || "?").slice(0, 1).toUpperCase();
-            const fs = R * 0.92;
-            return (
-              <g
-                key={m.id}
-                transform={`translate(${m.cx},${m.cy})`}
-                className="nf-marker-root cursor-pointer"
-                style={{ pointerEvents: "auto" }}
-                onMouseEnter={() => onMarkerHover?.(m.id)}
-                onMouseLeave={() => onMarkerHover?.(null)}
-              >
-                <title>{`${m.symbol} — ${m.subtitle}`}</title>
-                <g className={`nf-marker-inner ${hi ? "nf-marker-inner--hot" : ""}`}>
-                  {hi ? (
-                    <circle
-                      r={R + 3}
-                      fill="none"
-                      stroke="rgba(34, 211, 238, 0.55)"
-                      strokeWidth={1.25}
-                      style={{ pointerEvents: "none" }}
-                    />
-                  ) : null}
-                  <circle
-                    r={R}
-                    fill="url(#nf-coin-rim)"
-                    stroke="rgba(15, 23, 42, 0.92)"
-                    strokeWidth={rimW}
-                    vectorEffect="non-scaling-stroke"
-                    style={{ pointerEvents: "none" }}
-                  />
-                  <circle
-                    r={faceR}
-                    fill={hi ? "url(#nf-coin-face-hi)" : "url(#nf-coin-face)"}
-                    stroke="rgba(15, 23, 42, 0.22)"
-                    strokeWidth={0.45}
-                    vectorEffect="non-scaling-stroke"
-                    style={{ pointerEvents: "none" }}
-                  />
-                  <circle
-                    r={faceR * 0.92}
-                    fill="none"
-                    stroke="rgba(2, 6, 23, 0.18)"
-                    strokeWidth={0.5}
-                    strokeDasharray="1.8 2.8"
-                    style={{ pointerEvents: "none" }}
-                  />
-                  <text
-                    x={0}
-                    y={0}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="#0f172a"
-                    stroke="rgba(255, 251, 235, 0.55)"
-                    strokeWidth={0.35}
-                    paintOrder="stroke fill"
-                    style={{
-                      pointerEvents: "none",
-                      fontFamily:
-                        "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif",
-                      fontSize: `${fs}px`,
-                      fontWeight: 800,
-                      letterSpacing: "-0.04em",
-                    }}
-                  >
-                    {letter}
-                  </text>
-                </g>
-              </g>
-            );
-          })}
+          {markerPoints.map((m) => (
+            <MapTokenMarker
+              key={m.id}
+              marker={m}
+              highlighted={m.id === highlightMarkerId}
+              imageBroken={brokenMarkerImages.has(m.id)}
+              onImageError={(id) =>
+                setBrokenMarkerImages((prev) => {
+                  if (prev.has(id)) return prev;
+                  const next = new Set(prev);
+                  next.add(id);
+                  return next;
+                })
+              }
+              onHover={(id) => onMarkerHover?.(id)}
+            />
+          ))}
         </g>
       </svg>
     </div>

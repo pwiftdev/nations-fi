@@ -4,12 +4,19 @@ export interface DexScreenerTokenRef {
   symbol: string;
 }
 
+export interface DexScreenerPairInfo {
+  imageUrl?: string;
+  header?: string;
+  openGraph?: string;
+}
+
 export interface DexScreenerPair {
   chainId: string;
   dexId: string;
   pairAddress: string;
   baseToken: DexScreenerTokenRef;
   quoteToken: DexScreenerTokenRef;
+  info?: DexScreenerPairInfo;
   priceUsd?: string;
   priceChange?: {
     m5?: number;

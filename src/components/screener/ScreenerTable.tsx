@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { NationCoinRow, ScreenerSortKey } from "@/types/screener";
+import { getCategoryLabel } from "@/types/token-category";
 import {
   formatAge,
   formatCompactUsd,
@@ -11,6 +12,9 @@ import {
 } from "@/lib/format";
 import { flagEmoji } from "@/lib/flags";
 import { DexBadge } from "./dex-badge";
+import { TokenAvatar } from "./token-avatar";
+import { DexscreenerChartModal } from "./dexscreener-chart-modal";
+import { ScreenerRowActions } from "./screener-row-actions";
 
 function SortCaret({
   active,
@@ -49,6 +53,10 @@ function pctClass(n: number): string {
   return "text-[var(--muted)]";
 }
 
+function showsNationBadge(row: NationCoinRow): boolean {
+  return row.category === "country" || Boolean(row.mapAnchor);
+}
+
 const COMPACT_HEADERS_BASE: { key: ScreenerSortKey | null; label: string }[] = [
   { key: null, label: "#" },
   { key: null, label: "Nation" },
@@ -58,6 +66,7 @@ const COMPACT_HEADERS_BASE: { key: ScreenerSortKey | null; label: string }[] = [
   { key: "volume24h", label: "Vol" },
   { key: "marketCapUsd", label: "MC" },
   { key: null, label: "CA" },
+  { key: null, label: "" },
 ];
 
 export function ScreenerTable({
@@ -73,6 +82,8 @@ export function ScreenerTable({
   onRowMapFocus,
   showWatchlist = false,
 }: ScreenerTableProps) {
+  const [chartRow, setChartRow] = useState<NationCoinRow | null>(null);
+
   const fullHeaders: {
     key: ScreenerSortKey | null;
     label: string;
@@ -90,6 +101,7 @@ export function ScreenerTable({
     { key: "marketCapUsd", label: "MC" },
     { key: "ageHours", label: "Age" },
     { key: null, label: "CA" },
+    { key: null, label: "" },
   ];
 
   const compactHeaders = showWatchlist
@@ -105,15 +117,15 @@ export function ScreenerTable({
 
   const colTemplateFull = useMemo(
     () =>
-      "grid grid-cols-[44px_minmax(120px,1.1fr)_minmax(140px,1.2fr)_44px_minmax(88px,0.9fr)_minmax(120px,1fr)_minmax(72px,0.7fr)_minmax(56px,0.5fr)_minmax(72px,0.75fr)_minmax(72px,0.75fr)_minmax(64px,0.65fr)_52px_minmax(100px,1fr)]",
+      "grid grid-cols-[44px_minmax(120px,1.1fr)_minmax(140px,1.2fr)_44px_minmax(88px,0.9fr)_minmax(120px,1fr)_minmax(72px,0.7fr)_minmax(56px,0.5fr)_minmax(72px,0.75fr)_minmax(72px,0.75fr)_minmax(64px,0.65fr)_52px_minmax(88px,0.85fr)_108px]",
     [],
   );
 
   const colTemplateCompact = useMemo(
     () =>
       showWatchlist
-        ? "grid grid-cols-[28px_32px_minmax(96px,1fr)_minmax(112px,1.15fr)_minmax(76px,0.85fr)_minmax(52px,0.6fr)_minmax(68px,0.72fr)_minmax(60px,0.62fr)_minmax(84px,1fr)]"
-        : "grid grid-cols-[36px_minmax(100px,1fr)_minmax(120px,1.2fr)_minmax(80px,0.9fr)_minmax(56px,0.65fr)_minmax(72px,0.75fr)_minmax(64px,0.65fr)_minmax(88px,1fr)]",
+        ? "grid grid-cols-[28px_32px_minmax(96px,1fr)_minmax(112px,1.15fr)_minmax(76px,0.85fr)_minmax(52px,0.6fr)_minmax(68px,0.72fr)_minmax(60px,0.62fr)_minmax(72px,0.85fr)_108px]"
+        : "grid grid-cols-[36px_minmax(100px,1fr)_minmax(120px,1.2fr)_minmax(80px,0.9fr)_minmax(56px,0.65fr)_minmax(72px,0.75fr)_minmax(64px,0.65fr)_minmax(72px,0.85fr)_108px]",
     [showWatchlist],
   );
 
@@ -124,18 +136,29 @@ export function ScreenerTable({
   const textMain = variant === "compact" ? "text-[12px]" : "text-[13px]";
   const textMono = variant === "compact" ? "text-[11px]" : "text-[12px]";
 
+  const chartAddress =
+    chartRow?.chartAddress ?? chartRow?.contractAddress ?? chartRow?.id;
+
   return (
+    <>
+    <DexscreenerChartModal
+      open={chartRow != null}
+      onClose={() => setChartRow(null)}
+      symbol={chartRow?.baseSymbol ?? ""}
+      pairLabel={chartRow?.pairLabel}
+      chartAddress={chartAddress}
+    />
     <div
       className={
         variant === "compact"
           ? showWatchlist
-            ? "min-w-[760px]"
-            : "min-w-[720px]"
-          : "min-w-[1100px]"
+            ? "min-w-[860px]"
+            : "min-w-[820px]"
+          : "min-w-[1200px]"
       }
     >
       <div
-        className={`${colTemplate} border-b border-[var(--border)] bg-gradient-to-r from-[var(--screener-band)] via-[rgba(34,211,238,0.04)] to-[var(--screener-band)] px-3 py-1.5 text-left font-brand text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]`}
+        className={`${colTemplate} border-b border-[var(--border)] bg-gradient-to-r from-[var(--screener-band)] via-[var(--accent-secondary-dim)] to-[var(--screener-band)] px-3 py-1.5 text-left font-brand text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]`}
         role="row"
       >
         {headers.map((h) =>
@@ -144,7 +167,7 @@ export function ScreenerTable({
               key={h.label}
               type="button"
               onClick={() => toggleSort(h.key)}
-              className="group/sort flex cursor-pointer select-none items-center justify-start gap-0.5 rounded-[var(--radius-sm)] text-left transition-[color,transform,background-color] duration-200 hover:bg-[rgba(34,211,238,0.06)] hover:text-[var(--foreground)] active:scale-[0.98]"
+              className="group/sort flex cursor-pointer select-none items-center justify-start gap-0.5 rounded-[var(--radius-sm)] text-left transition-[color,transform,background-color] duration-200 hover:bg-[var(--accent-dim)] hover:text-[var(--foreground)] active:scale-[0.98]"
             >
               {h.label}
               <span className="transition-transform duration-200 group-hover/sort:translate-x-0.5">
@@ -180,8 +203,8 @@ export function ScreenerTable({
               onRowMapFocus && row.mapAnchor ? "cursor-pointer" : ""
             } ${
               isHover
-                ? "bg-[var(--screener-row-hover)] shadow-[inset_3px_0_0_0_rgba(34,211,238,0.75),0_0_28px_-14px_rgba(34,211,238,0.12)]"
-                : "bg-transparent shadow-[inset_3px_0_0_0_transparent] hover:bg-[var(--screener-row-hover)]/85 hover:shadow-[inset_3px_0_0_0_rgba(34,211,238,0.35),0_0_20px_-16px_rgba(34,211,238,0.06)]"
+                ? "bg-[var(--screener-row-hover)] shadow-[inset_3px_0_0_0_var(--screener-row-bar),0_0_28px_-14px_var(--screener-row-glow)]"
+                : "bg-transparent shadow-[inset_3px_0_0_0_transparent] hover:bg-[var(--screener-row-hover)]/85 hover:shadow-[inset_3px_0_0_0_color-mix(in_srgb,var(--screener-row-bar)_45%,transparent),0_0_20px_-16px_var(--screener-row-glow)]"
             }`}
           >
             {variant === "compact" ? (
@@ -214,20 +237,42 @@ export function ScreenerTable({
                 >
                   {row.rank}
                 </span>
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="text-base leading-none" title={row.nationName}>
-                    {flagEmoji(row.nationCode)}
-                  </span>
-                  <span className="truncate text-[var(--foreground)]">
-                    {row.nationName}
-                  </span>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  {showsNationBadge(row) ? (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span
+                        className="text-base leading-none"
+                        title={row.nationName}
+                      >
+                        {flagEmoji(row.nationCode)}
+                      </span>
+                      <span className="truncate text-[var(--foreground)]">
+                        {row.nationName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span
+                      className="truncate text-[10px] font-semibold uppercase tracking-wide text-[var(--accent)]/90"
+                      title={getCategoryLabel(row.category)}
+                    >
+                      {row.categoryLabel}
+                    </span>
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate font-medium tracking-tight text-[var(--foreground)]">
-                    {row.pairLabel}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1">
-                    <DexBadge dexLabel={row.dexLabel} />
+                <div className="flex min-w-0 items-center gap-2">
+                  <TokenAvatar
+                    src={row.tokenImageUrl}
+                    mint={row.contractAddress ?? row.id}
+                    symbol={row.baseSymbol}
+                    size="sm"
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate font-medium tracking-tight text-[var(--foreground)]">
+                      {row.pairLabel}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1">
+                      <DexBadge dexLabel={row.dexLabel} />
+                    </div>
                   </div>
                 </div>
                 <span
@@ -262,6 +307,11 @@ export function ScreenerTable({
                     "—"
                   )}
                 </span>
+                <ScreenerRowActions
+                  row={row}
+                  compact
+                  onChartClick={setChartRow}
+                />
               </>
             ) : (
               <>
@@ -270,28 +320,50 @@ export function ScreenerTable({
                 >
                   {row.rank}
                 </span>
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="text-lg leading-none" title={row.nationName}>
-                    {flagEmoji(row.nationCode)}
-                  </span>
-                  <span className="truncate text-[13px] text-[var(--foreground)]">
-                    {row.nationName}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate font-medium tracking-tight text-[var(--foreground)]">
-                    {row.pairLabel}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    {row.mapAnchor ? (
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  {showsNationBadge(row) ? (
+                    <div className="flex min-w-0 items-center gap-2">
                       <span
-                        className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]"
-                        title="Shown on globe"
-                      />
-                    ) : null}
-                    <span className="truncate text-[11px] text-[var(--muted)]">
-                      {row.mapAnchor ? "Mapped" : "Nation pair"}
+                        className="text-lg leading-none"
+                        title={row.nationName}
+                      >
+                        {flagEmoji(row.nationCode)}
+                      </span>
+                      <span className="truncate text-[13px] text-[var(--foreground)]">
+                        {row.nationName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span
+                      className="text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)]/90"
+                      title={getCategoryLabel(row.category)}
+                    >
+                      {row.categoryLabel}
                     </span>
+                  )}
+                </div>
+                <div className="flex min-w-0 items-center gap-2">
+                  <TokenAvatar
+                    src={row.tokenImageUrl}
+                    mint={row.contractAddress ?? row.id}
+                    symbol={row.baseSymbol}
+                    size="md"
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate font-medium tracking-tight text-[var(--foreground)]">
+                      {row.pairLabel}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      {row.mapAnchor ? (
+                        <span
+                          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]"
+                          title="Shown on globe"
+                        />
+                      ) : null}
+                      <span className="truncate text-[11px] text-[var(--muted)]">
+                        {row.mapAnchor ? "Mapped" : "Nation pair"}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-center">
@@ -363,11 +435,13 @@ export function ScreenerTable({
                     "—"
                   )}
                 </span>
+                <ScreenerRowActions row={row} onChartClick={setChartRow} />
               </>
             )}
           </div>
         );
       })}
     </div>
+    </>
   );
 }

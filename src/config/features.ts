@@ -7,6 +7,4 @@ export const FEATURES = {
   showMapHud: true,
   showWatchlistColumn: true,
   showNationUrlSync: true,
-  /** Short status line in the footer (markets source + disclaimer). */
-  footerNote: "Markets from DexScreener · not financial advice",
 } as const;

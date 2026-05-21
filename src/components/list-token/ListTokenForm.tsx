@@ -96,7 +96,7 @@ export function ListTokenForm() {
           </button>
           <Link
             href="/"
-            className="rounded-[var(--radius-sm)] bg-[var(--accent-dim)] px-4 py-2 text-[13px] font-medium text-[var(--accent)] ring-1 ring-[var(--border-accent)]/60 transition-colors hover:bg-[rgba(34,211,238,0.18)]"
+            className="rounded-[var(--radius-sm)] bg-[var(--accent-dim)] px-4 py-2 text-[13px] font-medium text-[var(--accent)] ring-1 ring-[var(--border-accent)]/60 transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_22%,transparent)]"
           >
             Back to screener
           </Link>
@@ -301,7 +301,7 @@ export function ListTokenForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="shrink-0 rounded-[var(--radius-sm)] bg-[var(--accent-dim)] px-5 py-2.5 text-[13px] font-semibold text-[var(--accent)] ring-1 ring-[var(--border-accent)]/70 transition-[opacity,transform] hover:bg-[rgba(34,211,238,0.18)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 rounded-[var(--radius-sm)] bg-[var(--accent-dim)] px-5 py-2.5 text-[13px] font-semibold text-[var(--accent)] ring-1 ring-[var(--border-accent)]/70 transition-[opacity,transform] hover:bg-[color-mix(in_srgb,var(--accent)_22%,transparent)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Submitting…" : "Submit listing"}
         </button>

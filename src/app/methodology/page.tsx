@@ -26,7 +26,19 @@ export default function MethodologyPage() {
           addresses into{" "}
           <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 text-[12px]">
             listed-token-addresses.ts
-          </code>
+          </code>{" "}
+          under three lists —{" "}
+          <strong className="text-[var(--foreground-secondary)]">
+            Country Coins
+          </strong>
+          ,{" "}
+          <strong className="text-[var(--foreground-secondary)]">
+            Event Coins
+          </strong>
+          , and{" "}
+          <strong className="text-[var(--foreground-secondary)]">
+            Footballer Coins
+          </strong>
           ; market stats load from the{" "}
           <strong className="text-[var(--foreground-secondary)]">
             DexScreener tokens API

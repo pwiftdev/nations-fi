@@ -1,7 +1,12 @@
+import type { ListedTokenEntry } from "@/data/listed-token-addresses";
+import { getCategoryLabelForEntry } from "@/data/listed-token-addresses";
 import type { NationCoinRow } from "@/types/screener";
+import type { TokenCategoryId } from "@/types/token-category";
+import { TOKEN_CATEGORY_BY_ID } from "@/types/token-category";
 import { dexIdToLabel } from "@/lib/dexscreener/dex-label";
 import type { DexScreenerPair } from "@/lib/dexscreener/types";
 import { inferNationFromTokenMeta } from "@/lib/nation-infer/infer-nation";
+import { isPumpFunMint, pumpFunCoinImageUrl } from "@/lib/pump-fun";
 
 function num(v: string | undefined): number {
   if (v == null || v === "") return 0;
@@ -30,6 +35,16 @@ function pickBestPairForMint(
   });
 }
 
+function tokenImageUrlFromPair(
+  pair: DexScreenerPair,
+  mint: string,
+): string | undefined {
+  const dex = pair.info?.imageUrl?.trim();
+  if (dex) return dex;
+  if (isPumpFunMint(mint)) return pumpFunCoinImageUrl(mint);
+  return undefined;
+}
+
 function estimateMakers24h(pair: DexScreenerPair): number {
   const buys = pair.txns?.h24?.buys ?? 0;
   const sells = pair.txns?.h24?.sells ?? 0;
@@ -38,19 +53,48 @@ function estimateMakers24h(pair: DexScreenerPair): number {
   return Math.max(1, Math.round(t / 6));
 }
 
+function displayNation(
+  category: TokenCategoryId,
+  nation: { nationCode: string; nationName: string },
+  mapped: boolean,
+): { nationCode: string; nationName: string } {
+  if (mapped) {
+    if (category === "event" && nation.nationCode === "US") {
+      return {
+        nationCode: nation.nationCode,
+        nationName: "United States (host)",
+      };
+    }
+    return nation;
+  }
+  if (category === "country") {
+    return nation;
+  }
+  const meta = TOKEN_CATEGORY_BY_ID[category];
+  return {
+    nationCode: category === "event" ? "EV" : "FB",
+    nationName: meta.rowLabel,
+  };
+}
+
 /**
- * @param orderedMints — mint list order defines default `rank` before re-sort
- * @param iso2Overrides — lowercase mint → ISO2 (from `MINT_TO_ISO2_OVERRIDE`)
+ * @param entries — mint + category; order defines default `rank` per category batch
+ * @param iso2Overrides — mint address → ISO2 (from `MINT_TO_ISO2_OVERRIDE`)
  */
 export function mergeDexPairsToRows(
-  orderedMints: string[],
+  entries: ListedTokenEntry[],
   pairs: DexScreenerPair[],
   iso2Overrides: Record<string, string> = {},
 ): NationCoinRow[] {
   const now = Date.now();
   const rows: NationCoinRow[] = [];
+  const rankByCategory: Record<TokenCategoryId, number> = {
+    country: 0,
+    event: 0,
+    footballer: 0,
+  };
 
-  for (const mint of orderedMints) {
+  for (const { mint, category } of entries) {
     const pair = pickBestPairForMint(mint, pairs);
     if (!pair) continue;
 
@@ -60,6 +104,8 @@ export function mergeDexPairsToRows(
       mint,
       iso2Overrides,
     );
+    const mapped = Boolean(nation.mapAnchor);
+    const display = displayNation(category, nation, mapped);
 
     const pc = pair.priceChange ?? {};
     const tx = pair.txns?.h24 ?? { buys: 0, sells: 0 };
@@ -67,14 +113,19 @@ export function mergeDexPairsToRows(
     const ageMs = Math.max(0, now - created);
     const ageHours = ageMs / 3_600_000;
 
+    rankByCategory[category] += 1;
+
     rows.push({
       id: mint,
-      rank: rows.length + 1,
-      nationCode: nation.nationCode,
-      nationName: nation.nationName,
+      rank: rankByCategory[category],
+      category,
+      categoryLabel: getCategoryLabelForEntry(category),
+      nationCode: display.nationCode,
+      nationName: display.nationName,
       pairLabel: `${pair.baseToken.symbol} / ${pair.quoteToken.symbol}`,
       baseSymbol: pair.baseToken.symbol,
       quoteSymbol: pair.quoteToken.symbol,
+      tokenImageUrl: tokenImageUrlFromPair(pair, mint),
       dexLabel: dexIdToLabel(pair.dexId),
       priceUsd: num(pair.priceUsd),
       change5m: pc.m5 ?? 0,
@@ -87,6 +138,7 @@ export function mergeDexPairsToRows(
       makers24h: estimateMakers24h(pair),
       ageHours,
       contractAddress: pair.baseToken.address,
+      chartAddress: pair.pairAddress,
       mapAnchor: nation.mapAnchor,
     });
   }

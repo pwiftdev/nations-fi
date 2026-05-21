@@ -9,6 +9,7 @@ import {
 } from "@/lib/format";
 import { flagEmoji } from "@/lib/flags";
 import { DexBadge } from "@/components/screener/dex-badge";
+import { TokenAvatar } from "@/components/screener/token-avatar";
 
 export type CountryHoverState = {
   iso2: string | null;
@@ -27,7 +28,7 @@ export function CountryHoverPanel({ state }: { state: CountryHoverState }) {
 
   return (
     <div
-      className="nf-panel-pop pointer-events-none absolute left-4 top-4 z-20 w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-accent)]/35 bg-[var(--surface-glass)] shadow-[0_0_40px_-12px_rgba(34,211,238,0.18),var(--shadow-elevated)] backdrop-blur-xl"
+      className="nf-panel-pop pointer-events-none absolute left-4 top-4 z-20 w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-accent)]/35 bg-[var(--surface-glass)] shadow-[0_0_40px_-12px_var(--accent-glow),var(--shadow-elevated)] backdrop-blur-xl"
       role="dialog"
       aria-label={`Nation sector: ${displayName}`}
     >
@@ -61,15 +62,23 @@ export function CountryHoverPanel({ state }: { state: CountryHoverState }) {
           {coins.map((c) => (
             <li
               key={c.id}
-              className="flex flex-col gap-2 border-l-2 border-transparent px-4 py-3 transition-[background-color,border-color,box-shadow] duration-200 hover:border-l-[var(--accent)]/40 hover:bg-[var(--surface-hover)] hover:shadow-[inset_0_0_20px_-12px_rgba(34,211,238,0.12)]"
+              className="flex flex-col gap-2 border-l-2 border-transparent px-4 py-3 transition-[background-color,border-color,box-shadow] duration-200 hover:border-l-[var(--accent)]/40 hover:bg-[var(--surface-hover)] hover:shadow-[inset_0_0_20px_-12px_var(--accent-glow)]"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-semibold tracking-tight text-[var(--foreground)]">
-                    {c.baseSymbol}
-                  </div>
-                  <div className="truncate text-[11px] text-[var(--muted)]">
-                    {c.pairLabel}
+                <div className="flex min-w-0 items-start gap-2">
+                  <TokenAvatar
+                    src={c.tokenImageUrl}
+                    mint={c.contractAddress ?? c.id}
+                    symbol={c.baseSymbol}
+                    size="md"
+                  />
+                  <div className="min-w-0">
+                    <div className="font-semibold tracking-tight text-[var(--foreground)]">
+                      {c.baseSymbol}
+                    </div>
+                    <div className="truncate text-[11px] text-[var(--muted)]">
+                      {c.pairLabel}
+                    </div>
                   </div>
                 </div>
                 <DexBadge dexLabel={c.dexLabel} />

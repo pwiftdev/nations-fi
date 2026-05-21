@@ -206,6 +206,90 @@ const TERRITORY: Record<
     nationName: "Hungary",
     mapAnchor: { lat: 47.1625, lng: 19.5033 },
   },
+  MA: {
+    nationName: "Morocco",
+    mapAnchor: { lat: 31.7917, lng: -7.0926 },
+  },
+  HR: {
+    nationName: "Croatia",
+    mapAnchor: { lat: 45.1, lng: 15.2 },
+  },
+  UY: {
+    nationName: "Uruguay",
+    mapAnchor: { lat: -32.5228, lng: -55.7658 },
+  },
+  IR: {
+    nationName: "Iran",
+    mapAnchor: { lat: 32.4279, lng: 53.688 },
+  },
+  SN: {
+    nationName: "Senegal",
+    mapAnchor: { lat: 14.4974, lng: -14.4524 },
+  },
+  EC: {
+    nationName: "Ecuador",
+    mapAnchor: { lat: -1.8312, lng: -78.1834 },
+  },
+  DZ: {
+    nationName: "Algeria",
+    mapAnchor: { lat: 28.0339, lng: 1.6596 },
+  },
+  GH: {
+    nationName: "Ghana",
+    mapAnchor: { lat: 7.9465, lng: -1.0232 },
+  },
+  PY: {
+    nationName: "Paraguay",
+    mapAnchor: { lat: -23.4425, lng: -58.4438 },
+  },
+  QA: {
+    nationName: "Qatar",
+    mapAnchor: { lat: 25.3548, lng: 51.1839 },
+  },
+  CD: {
+    nationName: "DR Congo",
+    mapAnchor: { lat: -4.0383, lng: 21.7587 },
+  },
+  CI: {
+    nationName: "Ivory Coast",
+    mapAnchor: { lat: 7.54, lng: -5.5471 },
+  },
+  BA: {
+    nationName: "Bosnia and Herzegovina",
+    mapAnchor: { lat: 43.9159, lng: 17.6791 },
+  },
+  TN: {
+    nationName: "Tunisia",
+    mapAnchor: { lat: 33.8869, lng: 9.5375 },
+  },
+  UZ: {
+    nationName: "Uzbekistan",
+    mapAnchor: { lat: 41.3775, lng: 64.5853 },
+  },
+  JO: {
+    nationName: "Jordan",
+    mapAnchor: { lat: 30.5852, lng: 36.2384 },
+  },
+  CW: {
+    nationName: "Curaçao",
+    mapAnchor: { lat: 12.1696, lng: -68.99 },
+  },
+  HT: {
+    nationName: "Haiti",
+    mapAnchor: { lat: 18.9712, lng: -72.2852 },
+  },
+  PA: {
+    nationName: "Panama",
+    mapAnchor: { lat: 8.538, lng: -80.7821 },
+  },
+  IQ: {
+    nationName: "Iraq",
+    mapAnchor: { lat: 33.2232, lng: 43.6793 },
+  },
+  CV: {
+    nationName: "Cabo Verde",
+    mapAnchor: { lat: 16.5388, lng: -23.0418 },
+  },
 };
 
 /**
@@ -267,6 +351,26 @@ const NATION_TICKER_TO_ISO2: Record<string, string> = {
   PHL: "PH",
   IDN: "ID",
   MYS: "MY",
+  MAR: "MA",
+  HRV: "HR",
+  URY: "UY",
+  IRN: "IR",
+  SEN: "SN",
+  ECU: "EC",
+  DZA: "DZ",
+  GHA: "GH",
+  PRY: "PY",
+  QAT: "QA",
+  COD: "CD",
+  CIV: "CI",
+  BIH: "BA",
+  TUN: "TN",
+  UZB: "UZ",
+  JOR: "JO",
+  HTI: "HT",
+  PAN: "PA",
+  IRQ: "IQ",
+  CPV: "CV",
 };
 
 function normalizeTickerKey(symbol: string): string {
@@ -292,6 +396,7 @@ function expandTokenTextForMatching(symbol: string, name: string): string {
  * ambiguous short tokens).
  */
 const RULES: { iso: string; re: RegExp }[] = [
+  { iso: "UN", re: /\bworld\s*cup\b/i },
   { iso: "KR", re: /\b(south korea|korea republic|republic of korea)\b/i },
   { iso: "KP", re: /\b(north korea|dprk)\b/i },
   { iso: "NZ", re: /\bnew zealand\b/i },
@@ -345,6 +450,27 @@ const RULES: { iso: string; re: RegExp }[] = [
   { iso: "SA", re: /\bsaudi\b/i },
   { iso: "RO", re: /\bromania\b/i },
   { iso: "HU", re: /\bhungary\b/i },
+  { iso: "MA", re: /\bmorocco\b/i },
+  { iso: "HR", re: /\bcroatia\b/i },
+  { iso: "UY", re: /\buruguay\b/i },
+  { iso: "IR", re: /\biran\b/i },
+  { iso: "SN", re: /\bsenegal\b/i },
+  { iso: "EC", re: /\becuador\b/i },
+  { iso: "DZ", re: /\balgeria\b/i },
+  { iso: "GH", re: /\bghana\b/i },
+  { iso: "PY", re: /\bparaguay\b/i },
+  { iso: "QA", re: /\bqatar\b/i },
+  { iso: "CD", re: /\b(dr\s*)?congo\b/i },
+  { iso: "CI", re: /\b(ivory\s*coast|côte d'ivoire|cote d'ivoire)\b/i },
+  { iso: "BA", re: /\b(bosnia|herzegovina)\b/i },
+  { iso: "TN", re: /\btunisia\b/i },
+  { iso: "UZ", re: /\buzbekistan\b/i },
+  { iso: "JO", re: /\bjordan\b/i },
+  { iso: "CW", re: /\bcura[cç]ao\b/i },
+  { iso: "HT", re: /\bhaiti\b/i },
+  { iso: "PA", re: /\bpanama\b/i },
+  { iso: "IQ", re: /\biraq\b/i },
+  { iso: "CV", re: /\b(cabo\s*verde|cape\s*verde)\b/i },
   { iso: "GB", re: /\b(^|[^a-z])uk([^a-z]|$)/i },
   { iso: "GB", re: /\bngbr\b/i },
   { iso: "JP", re: /\bnjpn\b/i },
@@ -365,7 +491,9 @@ export function inferNationFromTokenMeta(
   mintAddress: string,
   iso2Overrides: Record<string, string>,
 ): { nationCode: string; nationName: string; mapAnchor?: MapAnchor } {
-  const mintKey = mintAddress.trim().toLowerCase();
+  const mintKey = mintAddress.trim();
+  const tickerKey = normalizeTickerKey(symbol);
+
   const forced = iso2Overrides[mintKey]?.toUpperCase();
   if (forced && TERRITORY[forced]) {
     const t = TERRITORY[forced];
@@ -376,7 +504,11 @@ export function inferNationFromTokenMeta(
     };
   }
 
-  const tickerKey = normalizeTickerKey(symbol);
+  if (tickerKey === "WORLDCUP") {
+    const u = TERRITORY.UN;
+    return { nationCode: "UN", nationName: u.nationName, mapAnchor: undefined };
+  }
+
   if (tickerKey.length >= 3) {
     const isoFromTicker = NATION_TICKER_TO_ISO2[tickerKey];
     if (isoFromTicker) {

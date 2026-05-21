@@ -6,6 +6,8 @@ export interface GlobeMarker {
   lng: number;
   symbol: string;
   subtitle: string;
+  /** DexScreener token image for map pin when available. */
+  imageUrl?: string;
 }
 
 export function coinsToGlobeMarkers(rows: NationCoinRow[]): GlobeMarker[] {
@@ -19,5 +21,6 @@ export function coinsToGlobeMarkers(rows: NationCoinRow[]): GlobeMarker[] {
       lng: r.mapAnchor.lng,
       symbol: r.baseSymbol,
       subtitle: r.nationName,
+      imageUrl: r.tokenImageUrl,
     }));
 }

@@ -1,37 +1,38 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FEATURES } from "@/config/features";
 
 function AnnouncementBanner() {
   const segmentClass =
-    "inline-flex shrink-0 items-center gap-2 px-8 py-2 font-brand text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100 sm:gap-3 sm:px-10 sm:text-[11px] sm:tracking-[0.18em] md:text-[12px] md:tracking-[0.2em]";
+    "inline-flex shrink-0 items-center gap-2 px-8 py-2 font-brand text-[10px] font-semibold uppercase tracking-[0.14em] text-[#e8f4ec] sm:gap-3 sm:px-10 sm:text-[11px] sm:tracking-[0.18em] md:text-[12px] md:tracking-[0.2em]";
 
   return (
     <div
-      className="relative z-40 shrink-0 overflow-hidden border-b border-emerald-500/25 bg-gradient-to-r from-[#022c1d] via-[#03120f] to-[#022c1d]"
+      className="nf-announce-banner relative z-40 shrink-0 overflow-hidden"
       aria-label="FIFA World Cup 2026 is NEAR. List your token on the Nations.Fi world map now."
     >
       <div
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-14 bg-gradient-to-r from-[#022c1d] to-transparent sm:w-20"
+        className="nf-announce-fade-l pointer-events-none absolute inset-y-0 left-0 z-10 w-14 sm:w-20"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14 bg-gradient-to-l from-[#022c1d] to-transparent sm:w-20"
+        className="nf-announce-fade-r pointer-events-none absolute inset-y-0 right-0 z-10 w-14 sm:w-20"
         aria-hidden
       />
       <div className="nf-announce-track">
         {[0, 1].map((i) => (
           <span key={i} className={segmentClass} aria-hidden>
-            <span className="text-emerald-50/95">FIFA World Cup 2026 is</span>{" "}
-            <span className="bg-gradient-to-r from-[var(--accent)] to-cyan-200 bg-clip-text text-transparent drop-shadow-[0_0_14px_rgba(34,211,238,0.45)]">
+            <span>FIFA World Cup 2026 is</span>{" "}
+            <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent-secondary)] bg-clip-text text-transparent drop-shadow-[0_0_14px_rgba(45,212,122,0.4)]">
               NEAR
             </span>
-            <span className="px-2 text-emerald-600/70 sm:px-3" aria-hidden>
+            <span className="px-2 text-[var(--accent)]/50 sm:px-3" aria-hidden>
               ·
             </span>
-            <span className="max-w-[min(92vw,560px)] text-center leading-tight text-[var(--brand-fi)] drop-shadow-[0_0_12px_rgba(252,211,77,0.2)] sm:max-w-none sm:text-left">
+            <span className="max-w-[min(92vw,560px)] text-center leading-tight text-[var(--brand-fi)] drop-shadow-[0_0_12px_rgba(240,180,41,0.25)] sm:max-w-none sm:text-left">
               LIST YOUR TOKEN ON THE NATIONS.FI WORLD MAP NOW!
             </span>
           </span>
@@ -53,13 +54,23 @@ export function SiteHeader() {
       {FEATURES.showCampaignBanner ? <AnnouncementBanner /> : null}
       <header className="relative z-30 flex h-[52px] shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--header-bg)] px-4 backdrop-blur-xl lg:px-8">
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--border-accent)]/40 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--header-hairline)] to-transparent"
         aria-hidden
       />
       <Link
         href="/"
-        className="group relative flex items-center gap-3 outline-offset-4 transition-opacity hover:opacity-95"
+        className="group relative flex items-center gap-2.5 outline-offset-4 transition-opacity hover:opacity-95 sm:gap-3"
       >
+        <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--border-strong)] sm:h-9 sm:w-9">
+          <Image
+            src="/nationfilogo.png"
+            alt=""
+            fill
+            sizes="36px"
+            className="object-cover"
+            priority
+          />
+        </span>
         <span className="font-brand text-[17px] font-semibold tracking-[-0.02em] text-[var(--foreground)]">
           Nations
           <span className="text-[var(--brand-fi)]">.Fi</span>
@@ -78,7 +89,7 @@ export function SiteHeader() {
           href="/"
           className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
             isHome
-              ? "bg-[var(--accent-dim)] text-[var(--accent)] ring-1 ring-[var(--border-accent)]/60"
+              ? "bg-[var(--surface-2)] text-[var(--foreground)] ring-1 ring-[var(--border-strong)]"
               : "text-[var(--muted)] hover:text-[var(--foreground-secondary)]"
           }`}
         >
@@ -88,8 +99,8 @@ export function SiteHeader() {
           href="/list"
           className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
             isList
-              ? "bg-[var(--brand-fi-dim)] text-[var(--brand-fi)] ring-1 ring-amber-400/25"
-              : "border border-[var(--border)] bg-[var(--surface-2)]/80 text-[var(--foreground-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-3)]"
+              ? "bg-[var(--brand-fi-dim)] text-[var(--brand-fi)] ring-1 ring-[var(--brand-fi)]/30"
+              : "border border-[var(--border-strong)] bg-[var(--surface-1)] text-[var(--foreground-secondary)] hover:border-[var(--brand-fi)]/40 hover:bg-[var(--surface-2)] hover:text-[var(--brand-fi-soft)]"
           }`}
         >
           List your token

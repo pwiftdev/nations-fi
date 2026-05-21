@@ -2,6 +2,35 @@ import { NextResponse } from "next/server";
 import { isValidAlpha2 } from "@/lib/country-select-options";
 
 const SOLANA_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+const SHEETDB_URL =
+  process.env.SHEETDB_LIST_TOKEN_URL ??
+  "https://sheetdb.io/api/v1/ym72xclvqadzk";
+
+async function appendToSheet(row: Record<string, string>): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(SHEETDB_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ data: [row] }),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return { ok: false, error: `SheetDB ${res.status}: ${text || res.statusText}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown SheetDB error";
+    return { ok: false, error: message };
+  }
+}
 const OPTIONAL_URL = (v: string) => {
   if (!v.trim()) return true;
   try {
@@ -63,9 +92,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: errors[0], errors }, { status: 400 });
   }
 
-  // Stub: wire to DB, email, or Slack later.
+  const submittedAt = new Date().toISOString();
+  const sheetRow = {
+    submittedAt,
+    countryIso2,
+    projectName,
+    ticker,
+    contractAddress,
+    xLink,
+    website,
+    telegramLink,
+    description,
+    status: "pending review",
+    source: "nations.fi/list",
+  };
+
+  const sheetResult = await appendToSheet(sheetRow);
+  if (!sheetResult.ok) {
+    console.error("[list-token] SheetDB append failed:", sheetResult.error);
+    return NextResponse.json(
+      {
+        error:
+          "We received your details but could not save them right now. Please try again in a moment.",
+      },
+      { status: 502 },
+    );
+  }
+
   return NextResponse.json({
     ok: true,
-    message: "Submission received. Listing review is not automated yet.",
+    message: "Submission received. Our team will review your listing.",
   });
 }

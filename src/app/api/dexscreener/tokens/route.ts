@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   DEXSCREENER_CHAIN_ID,
-  getListedSolanaMints,
+  getListedTokenEntries,
   MINT_TO_ISO2_OVERRIDE,
 } from "@/data/listed-token-addresses";
 import { mergeDexPairsToRows } from "@/lib/dexscreener/merge-rows";
@@ -28,10 +28,11 @@ async function fetchPairs(
 export async function GET() {
   try {
     const chainId = DEXSCREENER_CHAIN_ID;
-    const orderedMints = getListedSolanaMints();
-    if (!orderedMints.length) {
+    const entries = getListedTokenEntries();
+    if (!entries.length) {
       return NextResponse.json({ rows: [] });
     }
+    const orderedMints = entries.map((e) => e.mint);
     const batches: string[][] = [];
     for (let i = 0; i < orderedMints.length; i += BATCH_SIZE) {
       batches.push(orderedMints.slice(i, i + BATCH_SIZE));
@@ -49,7 +50,7 @@ export async function GET() {
       }
     }
     const rows = mergeDexPairsToRows(
-      orderedMints,
+      entries,
       pairs,
       MINT_TO_ISO2_OVERRIDE,
     );
