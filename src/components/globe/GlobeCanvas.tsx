@@ -69,6 +69,24 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
   const [dims, setDims] = useState({ width: 800, height: 480 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // Live refs so event handlers always read the latest values without stale closures.
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  zoomRef.current = zoom;
+  panRef.current = pan;
+
+  // ── Multi-touch tracking ───────────────────────────────────────────────────
+  // Map of active pointer IDs → current client position.
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  // Previous pinch state (distance + midpoint) for incremental computation.
+  const lastPinchRef = useRef<{
+    dist: number;
+    midX: number;
+    midY: number;
+  } | null>(null);
+
+  // Single-touch drag state.
   const dragRef = useRef<{
     active: boolean;
     startX: number;
@@ -77,6 +95,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     pan0Y: number;
     maxDist: number;
   } | null>(null);
+  // Tracks max drag distance so we can distinguish tap from drag.
   const lastPointerMaxDist = useRef(0);
 
   const [brokenMarkerImages, setBrokenMarkerImages] = useState<Set<string>>(
@@ -114,6 +133,10 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
       baseTy: p.translate()[1]!,
     };
   }, [dims.width, dims.height]);
+
+  // Keep a ref to projectionFit so pinch handlers can always read latest values.
+  const projectionFitRef = useRef(projectionFit);
+  projectionFitRef.current = projectionFit;
 
   const projection = useMemo(() => {
     const p = geoNaturalEarth1();
@@ -349,6 +372,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     [onCountryMapClick, zoomToCountry],
   );
 
+  // ── Wheel zoom (desktop) ───────────────────────────────────────────────────
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -361,6 +385,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
+  // ── Keyboard navigation ────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -415,39 +440,145 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     [],
   );
 
+  // ── Pointer / touch event handlers ────────────────────────────────────────
+
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    lastPointerMaxDist.current = 0;
-    dragRef.current = {
-      active: true,
-      startX: e.clientX,
-      startY: e.clientY,
-      pan0X: pan.x,
-      pan0Y: pan.y,
-      maxDist: 0,
-    };
+    // Allow all pointer types (mouse left = 0, touch = 0, second touch = -1)
+    // Only filter out explicit right/middle mouse clicks.
+    if (e.button > 0) return;
+
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     svgRef.current?.setPointerCapture(e.pointerId);
+
+    const pointerCount = pointersRef.current.size;
+
+    if (pointerCount === 1) {
+      // Begin single-finger drag.
+      lastPointerMaxDist.current = 0;
+      dragRef.current = {
+        active: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        pan0X: panRef.current.x,
+        pan0Y: panRef.current.y,
+        maxDist: 0,
+      };
+      lastPinchRef.current = null;
+    } else if (pointerCount === 2) {
+      // Second finger down — switch to pinch mode, cancel drag.
+      dragRef.current = null;
+      const pts = [...pointersRef.current.values()];
+      const [p0, p1] = pts;
+      if (!p0 || !p1) return;
+      const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+      const midX = (p0.x + p1.x) / 2;
+      const midY = (p0.y + p1.y) / 2;
+      lastPinchRef.current = { dist, midX, midY };
+    }
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    const d = dragRef.current;
-    if (!d?.active) return;
-    const dx = e.clientX - d.startX;
-    const dy = e.clientY - d.startY;
-    d.maxDist = Math.max(d.maxDist, Math.hypot(dx, dy));
-    setPan({
-      x: d.pan0X + dx,
-      y: d.pan0Y + dy,
-    });
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    const pointerCount = pointersRef.current.size;
+
+    if (pointerCount >= 2 && lastPinchRef.current) {
+      // ── Pinch-to-zoom ────────────────────────────────────────────────────
+      const pts = [...pointersRef.current.values()];
+      const [p0, p1] = pts;
+      if (!p0 || !p1) return;
+
+      const newDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+      const newMidX = (p0.x + p1.x) / 2;
+      const newMidY = (p0.y + p1.y) / 2;
+
+      const prev = lastPinchRef.current;
+
+      // Avoid division by zero on first frame.
+      if (prev.dist < 1) {
+        lastPinchRef.current = { dist: newDist, midX: newMidX, midY: newMidY };
+        return;
+      }
+
+      const scale = newDist / prev.dist;
+      const curZoom = zoomRef.current;
+      const curPan = panRef.current;
+      const newZoom = clamp(curZoom * scale, 0.5, 10);
+      const zoomRatio = newZoom / curZoom;
+
+      // Compute midpoint relative to the canvas container.
+      const rect = containerRef.current?.getBoundingClientRect();
+      const containerLeft = rect?.left ?? 0;
+      const containerTop = rect?.top ?? 0;
+      const prevSx = prev.midX - containerLeft;
+      const prevSy = prev.midY - containerTop;
+      const pf = projectionFitRef.current;
+
+      // Keep the point under the previous midpoint fixed while zooming,
+      // then translate by how much the midpoint itself moved.
+      const panDx = newMidX - prev.midX;
+      const panDy = newMidY - prev.midY;
+      const newPanX =
+        prevSx - pf.baseTx - (prevSx - pf.baseTx - curPan.x) * zoomRatio + panDx;
+      const newPanY =
+        prevSy - pf.baseTy - (prevSy - pf.baseTy - curPan.y) * zoomRatio + panDy;
+
+      setZoom(newZoom);
+      setPan({ x: newPanX, y: newPanY });
+
+      // Mark as a "drag" so the pointerUp click guard fires correctly.
+      lastPointerMaxDist.current = Math.max(
+        lastPointerMaxDist.current,
+        Math.abs(newDist - prev.dist),
+      );
+
+      lastPinchRef.current = { dist: newDist, midX: newMidX, midY: newMidY };
+    } else if (pointerCount === 1) {
+      // ── Single-finger pan ────────────────────────────────────────────────
+      const d = dragRef.current;
+      if (!d?.active) return;
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      d.maxDist = Math.max(d.maxDist, Math.hypot(dx, dy));
+      setPan({
+        x: d.pan0X + dx,
+        y: d.pan0Y + dy,
+      });
+    }
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (d) lastPointerMaxDist.current = d.maxDist;
-    dragRef.current = null;
+
+    pointersRef.current.delete(e.pointerId);
     const svg = svgRef.current;
     if (svg?.hasPointerCapture?.(e.pointerId)) {
       svg.releasePointerCapture(e.pointerId);
+    }
+
+    const remaining = pointersRef.current.size;
+
+    if (remaining === 0) {
+      dragRef.current = null;
+      lastPinchRef.current = null;
+    } else if (remaining === 1) {
+      // Lifted one finger during pinch — switch back to single-finger pan
+      // but set maxDist high so the next pointerUp doesn't fire a click.
+      lastPinchRef.current = null;
+      lastPointerMaxDist.current = 100;
+      const [[, pos]] = [...pointersRef.current.entries()];
+      if (pos) {
+        dragRef.current = {
+          active: true,
+          startX: pos.x,
+          startY: pos.y,
+          pan0X: panRef.current.x,
+          pan0Y: panRef.current.y,
+          maxDist: 0,
+        };
+      }
     }
   };
 
