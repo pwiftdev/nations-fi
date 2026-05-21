@@ -49,14 +49,6 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/nationsfilogo.jpeg", type: "image/jpeg", sizes: "512x512" },
-    ],
-    shortcut: "/icon.svg",
-    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
-  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -67,8 +59,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/nationsfilogo.jpeg",
-        width: 512,
-        height: 512,
+        width: 1254,
+        height: 1254,
         alt: "Nations.Fi",
       },
     ],
