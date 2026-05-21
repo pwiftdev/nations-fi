@@ -275,15 +275,6 @@ function DashboardContent() {
     [setNationFilter],
   );
 
-  const onCountryMapClickMobile = useCallback(
-    (iso2: string | null) => {
-      if (!FEATURES.showNationUrlSync) return;
-      if (iso2) setNationFilter(iso2);
-      setMobileTab("screener");
-    },
-    [setNationFilter],
-  );
-
   const onToggleWatchlist = useCallback((id: string) => {
     if (!FEATURES.showWatchlistColumn) return;
     toggleWatchlistId(id);
@@ -376,7 +367,7 @@ function DashboardContent() {
                   onMarkerHover={setHoveredRowId}
                   allCoins={mapCoins}
                   onCountryHover={setCountryHover}
-                  onCountryMapClick={onCountryMapClickMobile}
+                  countryClickAction="panel"
                   labelMode={labelMode}
                 />
                 {FEATURES.showMapHud ? (

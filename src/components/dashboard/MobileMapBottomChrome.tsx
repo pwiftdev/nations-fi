@@ -42,8 +42,8 @@ export function MobileMapBottomChrome({
                 </p>
                 <p className="truncate text-[10px] text-[var(--muted)]">
                   {countryHover.coins.length === 0
-                    ? "No listed pairs · tap again to filter"
-                    : `${countryHover.coins.length} pair${countryHover.coins.length === 1 ? "" : "s"} · tap again to filter`}
+                    ? "No listed pairs"
+                    : `${countryHover.coins.length} pair${countryHover.coins.length === 1 ? "" : "s"}`}
                 </p>
               </div>
             </div>

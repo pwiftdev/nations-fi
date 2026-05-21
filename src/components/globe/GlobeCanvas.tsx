@@ -40,8 +40,13 @@ export interface GlobeCanvasProps {
   onMarkerHover?: (id: string | null) => void;
   allCoins: NationCoinRow[];
   onCountryHover?: (state: CountryHoverState | null) => void;
-  /** When user clicks a country (after zoom-to-fit). */
+  /**
+   * When user clicks a country (after zoom-to-fit).
+   * `filter` — calls onCountryMapClick (desktop: URL nation filter).
+   * `panel` — opens country hover panel only (mobile); no screener filter.
+   */
   onCountryMapClick?: (iso2: string | null) => void;
+  countryClickAction?: "filter" | "panel";
   labelMode?: MapLabelMode;
   className?: string;
 }
@@ -59,11 +64,13 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
       allCoins,
       onCountryHover,
       onCountryMapClick,
+      countryClickAction = "filter",
       labelMode = "full",
       className,
     },
     ref,
   ) {
+  const panelTapOnly = countryClickAction === "panel";
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [dims, setDims] = useState({ width: 800, height: 480 });
@@ -95,6 +102,8 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     maxDist: number;
   } | null>(null);
   const isDraggingRef = useRef(false);
+  /** Mobile tap: keep country panel open until user taps outside countries. */
+  const stickyCountryKeyRef = useRef<string | null>(null);
   // Tracks max drag distance so we can distinguish tap from drag.
   const lastPointerMaxDist = useRef(0);
 
@@ -240,15 +249,21 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
     }
   }, []);
 
+  const clearCountryHover = useCallback(() => {
+    stickyCountryKeyRef.current = null;
+    hoveredFeatureRef.current = null;
+    setHoveredRsmKey(null);
+    onCountryHover?.(null);
+  }, [onCountryHover]);
+
   const scheduleClearHover = useCallback(() => {
+    if (panelTapOnly && stickyCountryKeyRef.current) return;
     flushClearHover();
     clearHoverTimer.current = setTimeout(() => {
-      hoveredFeatureRef.current = null;
-      setHoveredRsmKey(null);
-      onCountryHover?.(null);
+      clearCountryHover();
       clearHoverTimer.current = null;
     }, 140);
-  }, [flushClearHover, onCountryHover]);
+  }, [clearCountryHover, flushClearHover, panelTapOnly]);
 
   const onCountryPathEnter = useCallback(
     (poly: PolygonDatum, rsmKey: string) => {
@@ -362,15 +377,28 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
   );
 
   const onCountryPathClick = useCallback(
-    (e: React.MouseEvent, feature: PolygonDatum) => {
+    (e: React.MouseEvent, feature: PolygonDatum, rsmKey: string) => {
       e.stopPropagation();
       if (lastPointerMaxDist.current > 8) return;
+
+      flushClearHover();
+      stickyCountryKeyRef.current = rsmKey;
+      onCountryPathEnter(feature, rsmKey);
       zoomToCountry(feature);
-      const poly = feature as CountryPolygonFeature;
-      const iso2 = polygonFeatureToIso2(poly);
-      onCountryMapClick?.(iso2 ?? null);
+
+      if (!panelTapOnly) {
+        const poly = feature as CountryPolygonFeature;
+        const iso2 = polygonFeatureToIso2(poly);
+        onCountryMapClick?.(iso2 ?? null);
+      }
     },
-    [onCountryMapClick, zoomToCountry],
+    [
+      flushClearHover,
+      onCountryMapClick,
+      onCountryPathEnter,
+      panelTapOnly,
+      zoomToCountry,
+    ],
   );
 
   // ── Wheel zoom (desktop) ───────────────────────────────────────────────────
@@ -445,6 +473,12 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button > 0) return;
+
+    const target = e.target as Element;
+    if (panelTapOnly && !target.closest(".nf-country-path")) {
+      flushClearHover();
+      clearCountryHover();
+    }
 
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     containerRef.current?.setPointerCapture(e.pointerId);
@@ -664,14 +698,18 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
                 key={row.key}
                 d={row.d}
                 className="nf-country-path cursor-pointer"
-                onClick={(e) => onCountryPathClick(e, row.feature)}
+                onClick={(e) => onCountryPathClick(e, row.feature, row.key)}
                 fill={fill}
                 stroke={stroke}
                 strokeWidth={strokeWidth}
                 vectorEffect="non-scaling-stroke"
                 style={{ outline: "none" }}
-                onMouseEnter={() => onCountryPathEnter(row.feature, row.key)}
-                onMouseLeave={onCountryPathLeave}
+                onMouseEnter={
+                  panelTapOnly
+                    ? undefined
+                    : () => onCountryPathEnter(row.feature, row.key)
+                }
+                onMouseLeave={panelTapOnly ? undefined : onCountryPathLeave}
               />
             );
           })}
