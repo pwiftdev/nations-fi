@@ -19,7 +19,7 @@ export function TradeButton({
       onClick={(e) => e.stopPropagation()}
       className={`inline-flex shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-accent)] bg-[var(--accent-dim)] font-semibold uppercase tracking-wide text-[var(--accent)] shadow-[0_0_12px_-4px_var(--accent-glow)] transition-[background,border-color,transform,box-shadow] duration-200 hover:border-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent-dim)_70%,var(--surface-3))] hover:shadow-[0_0_16px_-4px_var(--accent-glow)] active:scale-[0.97] ${
         compact
-          ? "px-2 py-0.5 text-[9px]"
+          ? "min-h-[32px] px-2.5 py-0.5 text-[9px] sm:min-h-0 sm:px-2"
           : "px-2.5 py-1 text-[10px]"
       }`}
     >

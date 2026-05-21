@@ -276,7 +276,8 @@ function DashboardContent() {
         {countryHover ? <CountryHoverPanel state={countryHover} /> : null}
         <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center px-4">
           <p className="rounded-full border border-[var(--border)] bg-[var(--surface-glass)] px-3 py-1 text-center font-mono text-[10px] tracking-wide text-[var(--muted)] backdrop-blur-md">
-            Drag · Scroll to zoom · Click country to filter · Esc to reset
+            <span className="sm:hidden">Tap country to filter · Pinch to zoom</span>
+            <span className="hidden sm:inline">Drag · Scroll to zoom · Click country to filter · Esc to reset</span>
           </p>
         </div>
       </div>

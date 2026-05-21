@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { NationCoinRow, ScreenerSortKey } from "@/types/screener";
 import type { TokenCategoryId } from "@/types/token-category";
 import { formatCompactUsd } from "@/lib/format";
@@ -49,6 +49,15 @@ function useMcAggregates(rows: NationCoinRow[]) {
 export function ScreenerDock(props: ScreenerDockProps) {
   const [pinnedTall, setPinnedTall] = useState(false);
   const [hovered, setHovered] = useState(false);
+
+  // On mobile (touch devices), auto-expand the dock on mount so the screener
+  // is immediately usable without needing hover interaction.
+  useEffect(() => {
+    if (window.innerWidth < 640) {
+      setPinnedTall(true);
+    }
+  }, []);
+
   const tall = pinnedTall || hovered;
   const statsSource = props.aggregateRows ?? props.rows;
   const { totalMc, topByMc } = useMcAggregates(statsSource);
@@ -58,7 +67,9 @@ export function ScreenerDock(props: ScreenerDockProps) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={`relative flex w-full min-w-0 shrink-0 flex-col overflow-hidden border border-[var(--border)] border-b-0 bg-[var(--dock-bg)]/96 shadow-[0_-18px_60px_-22px_rgba(0,0,0,0.6)] transition-[max-height,box-shadow] duration-300 ease-[var(--ease-out-expo)] ${
-        tall ? "max-h-[min(46vh,440px)]" : "max-h-[min(28vh,220px)]"
+        tall
+          ? "max-h-[min(62vh,580px)] sm:max-h-[min(46vh,440px)]"
+          : "max-h-[min(36vh,340px)] sm:max-h-[min(28vh,220px)]"
       }`}
     >
       <div
@@ -85,7 +96,7 @@ export function ScreenerDock(props: ScreenerDockProps) {
             aria-expanded={tall}
             aria-controls="nf-screener-dock-body"
             onClick={() => setPinnedTall((v) => !v)}
-            className="col-start-2 row-start-1 justify-self-end rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition-[background,border-color,color,transform,box-shadow] duration-200 hover:border-[var(--border-accent)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground-secondary)] hover:shadow-[0_0_16px_-4px_var(--accent-glow)] active:scale-[0.97] sm:col-start-3 sm:row-start-1 sm:justify-self-auto"
+            className="col-start-2 row-start-1 inline-flex min-h-[36px] min-w-[64px] items-center justify-center justify-self-end rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-medium text-[var(--muted)] transition-[background,border-color,color,transform,box-shadow] duration-200 hover:border-[var(--border-accent)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground-secondary)] hover:shadow-[0_0_16px_-4px_var(--accent-glow)] active:scale-[0.97] sm:col-start-3 sm:row-start-1 sm:min-h-0 sm:justify-self-auto"
           >
             {tall ? "Collapse" : "Expand"}
           </button>
