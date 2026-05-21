@@ -63,7 +63,7 @@ export function ScreenerDock(props: ScreenerDockProps) {
 
   const outerClass = isPanel
     ? "relative flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden border-0 bg-[var(--dock-bg)]"
-    : `relative flex w-full min-w-0 shrink-0 flex-col overflow-hidden border border-[var(--border)] border-b-0 bg-[var(--dock-bg)]/96 shadow-[0_-18px_60px_-22px_rgba(0,0,0,0.6)] transition-[max-height,box-shadow] duration-300 ease-[var(--ease-out-expo)] ${
+    : `relative flex w-full min-w-0 shrink-0 flex-col overflow-hidden border border-[var(--border)] border-b-0 bg-[var(--dock-bg)] shadow-[0_-18px_60px_-22px_rgba(0,0,0,0.6)] transition-[max-height,box-shadow] duration-300 ease-[var(--ease-out-expo)] ${
         tall
           ? "max-h-[min(46vh,440px)]"
           : "max-h-[min(42vh,330px)]"

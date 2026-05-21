@@ -467,7 +467,7 @@ function DashboardContent() {
           </div>
         </div>
 
-        <div className="shrink-0 bg-[var(--surface-0)] pb-3">
+        <div className="shrink-0 bg-[var(--header-bg)] pb-3">
           <DataStatusBanners loading={coinsLoading} error={coinsError} />
           <ScreenerDock
             {...screenerProps}

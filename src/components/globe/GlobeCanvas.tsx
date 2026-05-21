@@ -806,12 +806,48 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
         aria-label="World map of nation-sector listings"
       >
         <defs>
+          <linearGradient
+            id="nf-ocean-depth"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
+            <stop offset="0%" stopColor="var(--map-ocean-b)" />
+            <stop offset="45%" stopColor="var(--map-ocean)" />
+            <stop offset="100%" stopColor="var(--map-ocean-mid)" />
+          </linearGradient>
+          <radialGradient id="nf-ocean-glow" cx="48%" cy="42%" r="72%">
+            <stop offset="0%" stopColor="var(--map-ocean-glow)" />
+            <stop offset="55%" stopColor="rgba(8, 60, 110, 0.12)" />
+            <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
+          </radialGradient>
+          <radialGradient id="nf-ocean-shimmer" cx="72%" cy="28%" r="45%">
+            <stop offset="0%" stopColor="rgba(90, 200, 255, 0.14)" />
+            <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
+          </radialGradient>
           <radialGradient id="nf-vignette" cx="50%" cy="50%" r="78%">
-            <stop offset="62%" stopColor="rgba(0, 0, 0, 0)" />
+            <stop offset="55%" stopColor="rgba(0, 0, 0, 0)" />
             <stop offset="100%" stopColor="var(--map-vignette)" />
           </radialGradient>
         </defs>
-        <rect width={dims.width} height={dims.height} fill="var(--map-ocean)" />
+        <rect
+          width={dims.width}
+          height={dims.height}
+          fill="url(#nf-ocean-depth)"
+        />
+        <rect
+          width={dims.width}
+          height={dims.height}
+          fill="url(#nf-ocean-glow)"
+          style={{ pointerEvents: "none" }}
+        />
+        <rect
+          width={dims.width}
+          height={dims.height}
+          fill="url(#nf-ocean-shimmer)"
+          style={{ pointerEvents: "none" }}
+        />
         <rect
           width={dims.width}
           height={dims.height}
@@ -836,7 +872,7 @@ export const GlobeCanvas = forwardRef<GlobeCanvasHandle, GlobeCanvasProps>(
               : isListed
                 ? "var(--map-land-listed-stroke)"
                 : "var(--map-land-stroke)";
-            const strokeWidth = isHover ? 1.1 : isListed ? 0.8 : 0.6;
+            const strokeWidth = isHover ? 1.15 : isListed ? 0.85 : 0.7;
             return (
               <path
                 key={row.key}

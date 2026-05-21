@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, useState, type ReactNode } from "react";
 import { FEATURES } from "@/config/features";
-import { NationsFiWordmark } from "@/components/layout/NationsFiWordmark";
 
 const ANNOUNCE_STRIP_CLASS =
   "inline-flex shrink-0 items-center gap-0 py-2 font-brand text-[10px] font-semibold uppercase tracking-[0.08em] text-[#e8f4ec] sm:text-[11px] sm:tracking-[0.1em] md:text-[12px] md:tracking-[0.12em]";
@@ -137,7 +136,7 @@ export function SiteHeader() {
         />
         <Link
           href="/"
-          className="group relative flex items-center gap-2.5 outline-offset-4 transition-opacity hover:opacity-95 sm:gap-3"
+          className="group relative flex min-w-0 items-center gap-2 outline-offset-4 transition-opacity hover:opacity-95 sm:gap-2.5"
         >
           <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--border-strong)] sm:h-9 sm:w-9">
             <Image
@@ -149,9 +148,18 @@ export function SiteHeader() {
               priority
             />
           </span>
-          <NationsFiWordmark size="md" />
-          <span className="hidden h-4 w-px bg-[var(--border-strong)] sm:block" aria-hidden />
-          <span className="hidden max-w-[220px] truncate font-sans text-[11px] font-medium leading-snug tracking-wide text-[var(--muted)] sm:inline">
+          <span className="relative block h-[33px] w-auto shrink-0 aspect-[200/75] sm:h-[39px]">
+            <Image
+              src="/nationsfitext.png"
+              alt="Nations.Fi"
+              fill
+              sizes="(max-width: 104px) 100vw, 104px"
+              className="object-contain"
+              priority
+            />
+          </span>
+          <span className="hidden h-4 w-px shrink-0 bg-[var(--border-strong)] sm:block" aria-hidden />
+          <span className="hidden min-w-0 truncate font-sans text-[11px] font-medium leading-snug tracking-wide text-[var(--muted)] sm:inline">
             Nation-sector markets on{" "}
             <span className="text-[var(--foreground-secondary)]">Solana</span>
           </span>
