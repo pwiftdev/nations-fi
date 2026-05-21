@@ -22,7 +22,13 @@ import {
   type CountryHoverState,
 } from "@/components/globe/CountryHoverPanel";
 import { ScreenerDock } from "@/components/screener/ScreenerDock";
+import type { ScreenerDockProps } from "@/components/screener/ScreenerDock";
 import { MapHud } from "@/components/dashboard/MapHud";
+import { MobileMapBottomChrome } from "@/components/dashboard/MobileMapBottomChrome";
+import {
+  MobileHomeTabs,
+  type MobileHomeTab,
+} from "@/components/dashboard/MobileHomeTabs";
 import { FEATURES } from "@/config/features";
 import {
   MAP_LABEL_STORAGE_KEY,
@@ -62,11 +68,43 @@ function filterRows(rows: NationCoinRow[], q: string): NationCoinRow[] {
   );
 }
 
+function DataStatusBanners({
+  loading,
+  error,
+}: {
+  loading: boolean;
+  error: string | null;
+}) {
+  return (
+    <>
+      {loading && !error ? (
+        <p
+          className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 text-center text-[11px] text-[var(--muted)]"
+          role="status"
+        >
+          Loading markets from DexScreener…
+        </p>
+      ) : null}
+      {error ? (
+        <p
+          className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 text-center text-[11px] text-amber-200/90"
+          role="status"
+        >
+          Could not load DexScreener data: {error}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 function DashboardContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const globeRef = useRef<GlobeCanvasHandle>(null);
+
+  const [mobileTab, setMobileTab] = useState<MobileHomeTab>("screener");
+  const [mapMounted, setMapMounted] = useState(false);
 
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<ScreenerSortKey>("rank");
@@ -121,6 +159,10 @@ function DashboardContent() {
     );
     if (stored) setLabelMode(stored);
   }, []);
+
+  useEffect(() => {
+    if (mobileTab === "map") setMapMounted(true);
+  }, [mobileTab]);
 
   const categoryFilter = useMemo((): TokenCategoryId | null => {
     const raw = searchParams.get("category") ?? "";
@@ -225,10 +267,19 @@ function DashboardContent() {
     setSortDir(key === "rank" || key === "ageHours" ? "asc" : "desc");
   };
 
-  const onCountryMapClick = useCallback(
+  const onCountryMapClickDesktop = useCallback(
     (iso2: string | null) => {
       if (!FEATURES.showNationUrlSync) return;
       if (iso2) setNationFilter(iso2);
+    },
+    [setNationFilter],
+  );
+
+  const onCountryMapClickMobile = useCallback(
+    (iso2: string | null) => {
+      if (!FEATURES.showNationUrlSync) return;
+      if (iso2) setNationFilter(iso2);
+      setMobileTab("screener");
     },
     [setNationFilter],
   );
@@ -239,7 +290,22 @@ function DashboardContent() {
     setWatchlistTick((n) => n + 1);
   }, []);
 
-  const onRowMapFocus = useCallback((row: NationCoinRow) => {
+  const flyToRowOnMap = useCallback((row: NationCoinRow) => {
+    if (!row.mapAnchor) return;
+    setMapMounted(true);
+    setMobileTab("map");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        globeRef.current?.flyToLngLat(
+          row.mapAnchor!.lng,
+          row.mapAnchor!.lat,
+          5.2,
+        );
+      });
+    });
+  }, []);
+
+  const onRowMapFocusDesktop = useCallback((row: NationCoinRow) => {
     if (!row.mapAnchor) return;
     globeRef.current?.flyToLngLat(
       row.mapAnchor.lng,
@@ -257,71 +323,107 @@ function DashboardContent() {
     });
   }, []);
 
+  const screenerProps: ScreenerDockProps = {
+    query,
+    onQueryChange: setQuery,
+    resultCount: sorted.length,
+    rows: sorted,
+    aggregateRows: aggregateForStats,
+    statsLoading: coinsLoading,
+    categoryFilter,
+    categoryCounts,
+    onCategoryChange: setCategoryFilter,
+    sortKey,
+    sortDir,
+    onSortChange,
+    hoveredRowId,
+    onHoverRow: setHoveredRowId,
+    nationFilter,
+    nationOptions,
+    onNationChange: setNationFilter,
+    watchlistIds,
+    onToggleWatchlist,
+    showWatchlist: FEATURES.showWatchlistColumn,
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="relative min-h-0 flex-1 bg-[var(--map-ocean)]">
-        <WorldGlobe
-          ref={globeRef}
-          markers={markers}
-          highlightMarkerId={highlightMarkerId}
-          onMarkerHover={setHoveredRowId}
-          allCoins={mapCoins}
-          onCountryHover={setCountryHover}
-          onCountryMapClick={onCountryMapClick}
-          labelMode={labelMode}
+      {/* ── Mobile: screener-first with optional Map tab (md and below) ── */}
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+        <MobileHomeTabs
+          active={mobileTab}
+          onChange={setMobileTab}
+          screenerCount={sorted.length}
         />
-        {FEATURES.showMapHud ? (
-          <MapHud show labelMode={labelMode} onCycleLabels={cycleLabels} />
-        ) : null}
-        {countryHover ? <CountryHoverPanel state={countryHover} /> : null}
-        <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center px-4">
-          <p className="rounded-full border border-[var(--border)] bg-[var(--surface-glass)] px-3 py-1 text-center font-mono text-[10px] tracking-wide text-[var(--muted)] backdrop-blur-md">
-            <span className="sm:hidden">Tap country to filter · Pinch to zoom</span>
-            <span className="hidden sm:inline">Drag · Scroll to zoom · Click country to filter · Esc to reset</span>
-          </p>
-        </div>
+        <DataStatusBanners loading={coinsLoading} error={coinsError} />
+
+        {mobileTab === "screener" ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--surface-0)] pb-[env(safe-area-inset-bottom,0px)]">
+            <ScreenerDock
+              {...screenerProps}
+              layout="panel"
+              onRowMapFocus={flyToRowOnMap}
+            />
+          </div>
+        ) : (
+          <div className="relative min-h-0 flex-1 bg-[var(--map-ocean)]">
+            {mapMounted ? (
+              <>
+                <WorldGlobe
+                  ref={globeRef}
+                  markers={markers}
+                  highlightMarkerId={highlightMarkerId}
+                  onMarkerHover={setHoveredRowId}
+                  allCoins={mapCoins}
+                  onCountryHover={setCountryHover}
+                  onCountryMapClick={onCountryMapClickMobile}
+                  labelMode={labelMode}
+                />
+                {FEATURES.showMapHud ? (
+                  <MapHud show labelMode={labelMode} onCycleLabels={cycleLabels} />
+                ) : null}
+              </>
+            ) : null}
+            <MobileMapBottomChrome
+              globeRef={globeRef}
+              countryHover={countryHover}
+            />
+          </div>
+        )}
       </div>
 
-      <div className="shrink-0 bg-[var(--surface-0)] pb-3">
-        {coinsLoading && !coinsError ? (
-          <p
-            className="border-b border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 text-center text-[11px] text-[var(--muted)]"
-            role="status"
-          >
-            Loading markets from DexScreener…
-          </p>
-        ) : null}
-        {coinsError ? (
-          <p
-            className="border-b border-[var(--border)] bg-[var(--surface-1)] px-4 py-2 text-center text-[11px] text-amber-200/90"
-            role="status"
-          >
-            Could not load DexScreener data: {coinsError}
-          </p>
-        ) : null}
-        <ScreenerDock
-          query={query}
-          onQueryChange={setQuery}
-          resultCount={sorted.length}
-          rows={sorted}
-          aggregateRows={aggregateForStats}
-          statsLoading={coinsLoading}
-          categoryFilter={categoryFilter}
-          categoryCounts={categoryCounts}
-          onCategoryChange={setCategoryFilter}
-          sortKey={sortKey}
-          sortDir={sortDir}
-          onSortChange={onSortChange}
-          hoveredRowId={hoveredRowId}
-          onHoverRow={setHoveredRowId}
-          nationFilter={nationFilter}
-          nationOptions={nationOptions}
-          onNationChange={setNationFilter}
-          watchlistIds={watchlistIds}
-          onToggleWatchlist={onToggleWatchlist}
-          onRowMapFocus={onRowMapFocus}
-          showWatchlist={FEATURES.showWatchlistColumn}
-        />
+      {/* ── Desktop: map + bottom dock (md and up) ── */}
+      <div className="hidden min-h-0 flex-1 flex-col md:flex">
+        <div className="relative min-h-0 flex-1 bg-[var(--map-ocean)]">
+          <WorldGlobe
+            ref={globeRef}
+            markers={markers}
+            highlightMarkerId={highlightMarkerId}
+            onMarkerHover={setHoveredRowId}
+            allCoins={mapCoins}
+            onCountryHover={setCountryHover}
+            onCountryMapClick={onCountryMapClickDesktop}
+            labelMode={labelMode}
+          />
+          {FEATURES.showMapHud ? (
+            <MapHud show labelMode={labelMode} onCycleLabels={cycleLabels} />
+          ) : null}
+          {countryHover ? <CountryHoverPanel state={countryHover} /> : null}
+          <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center px-4">
+            <p className="rounded-full border border-[var(--border)] bg-[var(--surface-glass)] px-3 py-1 text-center font-mono text-[10px] tracking-wide text-[var(--muted)] backdrop-blur-md">
+              Drag · Scroll to zoom · Click country to filter · Esc to reset
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 bg-[var(--surface-0)] pb-3">
+          <DataStatusBanners loading={coinsLoading} error={coinsError} />
+          <ScreenerDock
+            {...screenerProps}
+            layout="dock"
+            onRowMapFocus={onRowMapFocusDesktop}
+          />
+        </div>
       </div>
     </div>
   );

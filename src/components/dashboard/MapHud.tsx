@@ -19,7 +19,7 @@ export function MapHud({ show, labelMode, onCycleLabels }: MapHudProps) {
         : "Labels: off";
 
   return (
-    <div className="pointer-events-none absolute bottom-14 right-3 z-20 sm:bottom-[4.5rem] sm:right-4">
+    <div className="pointer-events-none absolute right-3 top-3 z-20 md:bottom-[4.5rem] md:top-auto md:right-4">
       <button
         type="button"
         onClick={onCycleLabels}

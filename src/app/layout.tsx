@@ -18,45 +18,76 @@ const outfit = Outfit({
   display: "swap",
 });
 
+const siteDescription =
+  "Nation-sector token screener for Solana — geographic context, liquidity, and markets in one view.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://nations.fi"),
   title: {
-    default: "Nations.Fi",
+    default: "Nations.Fi — Solana nation-sector screener",
     template: "%s · Nations.Fi",
   },
-  description:
-    "Nation-sector token screener for Solana — geographic context, liquidity, and markets in one view.",
+  description: siteDescription,
   applicationName: "Nations.Fi",
+  generator: "Next.js",
+  referrer: "origin-when-cross-origin",
   keywords: [
     "Nations.Fi",
     "Solana",
-    "screener",
+    "token screener",
     "nation sector",
     "DeFi",
-    "token",
+    "memecoin",
+    "world map",
+    "DexScreener",
   ],
-  authors: [{ name: "Nations.Fi" }],
+  authors: [{ name: "Nations.Fi", url: "https://nations.fi" }],
+  creator: "Nations.Fi",
+  publisher: "Nations.Fi",
+  category: "finance",
+  robots: {
+    index: true,
+    follow: true,
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/nationfilogo.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: "/icon.svg",
+    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
+    url: "https://nations.fi",
     siteName: "Nations.Fi",
-    title: "Nations.Fi — Nation-sector screener",
-    description:
-      "Nation-sector token screener for Solana — geographic context, liquidity, and markets in one view.",
+    title: "Nations.Fi — Solana nation-sector screener",
+    description: siteDescription,
+    images: [
+      {
+        url: "/nationfilogo.png",
+        width: 512,
+        height: 512,
+        alt: "Nations.Fi",
+      },
+    ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Nations.Fi — Nation-sector screener",
-    description:
-      "Nation-sector token screener for Solana — geographic context, liquidity, and markets in one view.",
+    card: "summary",
+    title: "Nations.Fi — Solana nation-sector screener",
+    description: siteDescription,
+    images: ["/nationfilogo.png"],
+  },
+  alternates: {
+    canonical: "https://nations.fi",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0e1116" },
-    { media: "(prefers-color-scheme: light)", color: "#0e1116" },
-  ],
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0e1116",
   colorScheme: "dark",
 };
 

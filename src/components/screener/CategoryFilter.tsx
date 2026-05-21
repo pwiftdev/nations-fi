@@ -9,6 +9,15 @@ export interface CategoryFilterProps {
   counts: Record<TokenCategoryId, number>;
 }
 
+const chipBase =
+  "shrink-0 snap-start rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-[background,border-color,color,box-shadow] duration-200 md:px-2.5 md:py-1 md:text-[10px] md:uppercase md:tracking-wide";
+
+function chipClass(active: boolean): string {
+  return active
+    ? `${chipBase} border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] shadow-[0_0_14px_-4px_var(--accent-glow)]`
+    : `${chipBase} border-[var(--border)] bg-[var(--surface-2)]/80 text-[var(--muted)] hover:border-[var(--border-accent)]/50 hover:text-[var(--foreground-secondary)]`;
+}
+
 export function CategoryFilter({
   value,
   onChange,
@@ -16,7 +25,7 @@ export function CategoryFilter({
 }: CategoryFilterProps) {
   return (
     <div
-      className="flex flex-wrap items-center gap-1.5"
+      className="-mx-3 flex gap-2 overflow-x-auto overscroll-x-contain px-3 pb-0.5 snap-x snap-mandatory [-webkit-overflow-scrolling:touch] md:mx-0 md:flex-wrap md:overflow-visible md:gap-1.5 md:px-0 md:pb-0"
       role="tablist"
       aria-label="Token category"
     >
@@ -25,13 +34,18 @@ export function CategoryFilter({
         role="tab"
         aria-selected={value === null}
         onClick={() => onChange(null)}
-        className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-[background,border-color,color,box-shadow] duration-200 ${
-          value === null
-            ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] shadow-[0_0_14px_-4px_var(--accent-glow)]"
-            : "border-[var(--border)] bg-[var(--surface-2)]/80 text-[var(--muted)] hover:border-[var(--border-accent)]/50 hover:text-[var(--foreground-secondary)]"
-        }`}
+        className={chipClass(value === null)}
       >
         All
+        <span
+          className={`ml-1.5 font-mono text-[10px] tabular-nums ${
+            value === null
+              ? "text-[var(--foreground-secondary)]"
+              : "text-[var(--muted-faint)]"
+          }`}
+        >
+          {counts.country + counts.event + counts.footballer}
+        </span>
       </button>
       {TOKEN_CATEGORIES.map((cat) => {
         const active = value === cat.id;
@@ -43,15 +57,16 @@ export function CategoryFilter({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(cat.id)}
-            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-[background,border-color,color,box-shadow] duration-200 ${
-              active
-                ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] shadow-[0_0_14px_-4px_var(--accent-glow)]"
-                : "border-[var(--border)] bg-[var(--surface-2)]/80 text-[var(--muted)] hover:border-[var(--border-accent)]/50 hover:text-[var(--foreground-secondary)]"
-            }`}
+            className={chipClass(active)}
           >
-            {cat.label}
+            <span className="md:hidden">{cat.shortLabel}</span>
+            <span className="hidden md:inline">{cat.label}</span>
             <span
-              className={`ml-1 font-mono tabular-nums ${active ? "text-[var(--foreground-secondary)]" : "text-[var(--muted-faint)]"}`}
+              className={`ml-1.5 font-mono text-[10px] tabular-nums ${
+                active
+                  ? "text-[var(--foreground-secondary)]"
+                  : "text-[var(--muted-faint)]"
+              }`}
             >
               {count}
             </span>
