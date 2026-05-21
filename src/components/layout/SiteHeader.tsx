@@ -141,7 +141,7 @@ export function SiteHeader() {
         >
           <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--border-strong)] sm:h-9 sm:w-9">
             <Image
-              src="/nationfilogo.png"
+              src="/nationsfilogo.jpeg"
               alt=""
               fill
               sizes="36px"

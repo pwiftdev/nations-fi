@@ -13,9 +13,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     icons: [
       {
-        src: "/nationfilogo.png",
+        src: "/nationsfilogo.jpeg",
         sizes: "512x512",
-        type: "image/png",
+        type: "image/jpeg",
         purpose: "any",
       },
     ],

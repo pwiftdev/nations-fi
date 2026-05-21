@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/nationfilogo.png", type: "image/png", sizes: "512x512" },
+      { url: "/nationsfilogo.jpeg", type: "image/jpeg", sizes: "512x512" },
     ],
     shortcut: "/icon.svg",
     apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: "/nationfilogo.png",
+        url: "/nationsfilogo.jpeg",
         width: 512,
         height: 512,
         alt: "Nations.Fi",
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Nations.Fi — Solana nation-sector screener",
     description: siteDescription,
-    images: ["/nationfilogo.png"],
+    images: ["/nationsfilogo.jpeg"],
   },
   alternates: {
     canonical: "https://nations.fi",
