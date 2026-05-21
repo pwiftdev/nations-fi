@@ -1,5 +1,14 @@
 export type TokenCategoryId = "country" | "event" | "footballer";
 
+/** Screener chip filter: all categories by volume, or a single category. */
+export type ScreenerCategoryFilter = "trending" | TokenCategoryId;
+
+export function isScreenerCategoryFilter(
+  value: string,
+): value is ScreenerCategoryFilter {
+  return value === "trending" || isTokenCategoryId(value);
+}
+
 export interface TokenCategoryMeta {
   id: TokenCategoryId;
   label: string;

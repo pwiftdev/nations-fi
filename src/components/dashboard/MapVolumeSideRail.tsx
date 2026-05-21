@@ -40,7 +40,7 @@ export function MapVolumeSideRail({
         <h2 className="font-brand text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--foreground)]">
           {title}
         </h2>
-        <p className="mt-0.5 text-[10px] text-[var(--muted)]">By 24h volume</p>
+        <p className="mt-0.5 text-[10px] text-[var(--muted)]">By market cap</p>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
         {rows.length === 0 ? (
@@ -83,11 +83,16 @@ export function MapVolumeSideRail({
                         </span>
                       ) : null}
                     </span>
-                    <span className="mt-0.5 flex items-center justify-between gap-2 font-mono text-[10px] tabular-nums">
-                      <span className="text-[var(--muted)]">
-                        {formatCompactUsd(row.volume24h)}
+                    <span className="mt-0.5 flex items-center justify-between gap-1.5 font-mono text-[10px] tabular-nums">
+                      <span className="min-w-0 truncate text-[var(--muted)]">
+                        <span className="font-medium text-[var(--foreground-secondary)]">
+                          {formatCompactUsd(row.marketCapUsd)}
+                        </span>
+                        <span className="text-[var(--muted-faint)]"> MC · </span>
+                        <span>{formatCompactUsd(row.volume24h)}</span>
+                        <span className="text-[var(--muted-faint)]"> vol</span>
                       </span>
-                      <span className={pctClass(row.change24h)}>
+                      <span className={`shrink-0 ${pctClass(row.change24h)}`}>
                         {formatPercent(row.change24h)}
                       </span>
                     </span>

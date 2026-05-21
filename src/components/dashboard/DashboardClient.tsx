@@ -12,8 +12,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { NationCoinRow } from "@/types/screener";
 import {
   isTokenCategoryId,
+  type ScreenerCategoryFilter,
   type TokenCategoryId,
 } from "@/types/token-category";
+import {
+  DEFAULT_SCREENER_SORT_DIR,
+  DEFAULT_SCREENER_SORT_KEY,
+  TRENDING_SCREENER_SORT_DIR,
+  TRENDING_SCREENER_SORT_KEY,
+} from "@/lib/screener-sort";
 import { WorldGlobe } from "@/components/globe/WorldGlobe";
 import type { GlobeCanvasHandle } from "@/components/globe/GlobeCanvas";
 import { coinsToGlobeMarkers } from "@/components/globe/globe-markers";
@@ -180,17 +187,18 @@ function DashboardContent() {
     if (!isMdUp && mobileTab === "map") setMapMounted(true);
   }, [isMdUp, mobileTab]);
 
-  const categoryFilter = useMemo((): TokenCategoryId | null => {
+  const categoryFilter = useMemo((): ScreenerCategoryFilter => {
     const raw = searchParams.get("category") ?? "";
-    return isTokenCategoryId(raw) ? raw : null;
+    if (raw === "" || raw === "trending") return "trending";
+    return isTokenCategoryId(raw) ? raw : "trending";
   }, [searchParams]);
 
   const setCategoryFilter = useCallback(
-    (category: TokenCategoryId | null) => {
+    (category: ScreenerCategoryFilter) => {
       const q = new URLSearchParams(searchParams.toString());
-      if (category) q.set("category", category);
-      else q.delete("category");
-      if (category && category !== "country") q.delete("nation");
+      if (category === "trending") q.delete("category");
+      else q.set("category", category);
+      if (category !== "trending" && category !== "country") q.delete("nation");
       const qs = q.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
@@ -237,7 +245,7 @@ function DashboardContent() {
 
   const filtered = useMemo(() => {
     let rows = filterRows(coins, query);
-    if (categoryFilter) {
+    if (categoryFilter !== "trending") {
       rows = rows.filter((r) => r.category === categoryFilter);
     }
     if (nationFilter) {
@@ -247,15 +255,29 @@ function DashboardContent() {
   }, [coins, categoryFilter, nationFilter, query]);
 
   const aggregateForStats = useMemo(() => {
-    if (!categoryFilter) return coins;
+    if (categoryFilter === "trending") return coins;
     return coins.filter((r) => r.category === categoryFilter);
   }, [coins, categoryFilter]);
 
   const mapCoins = useMemo(() => {
     const mappable = coins.filter((r) => Boolean(r.mapAnchor));
-    if (!categoryFilter) return mappable;
+    if (categoryFilter === "trending") return mappable;
     return mappable.filter((r) => r.category === categoryFilter);
   }, [coins, categoryFilter]);
+
+  const screenerDefaultSort = useMemo(
+    () =>
+      categoryFilter === "trending"
+        ? {
+            defaultSortKey: TRENDING_SCREENER_SORT_KEY,
+            defaultSortDir: TRENDING_SCREENER_SORT_DIR,
+          }
+        : {
+            defaultSortKey: DEFAULT_SCREENER_SORT_KEY,
+            defaultSortDir: DEFAULT_SCREENER_SORT_DIR,
+          },
+    [categoryFilter],
+  );
 
   const markers = useMemo(() => coinsToGlobeMarkers(mapCoins), [mapCoins]);
 
@@ -297,20 +319,22 @@ function DashboardContent() {
 
   const MAP_SIDE_LIST_SIZE = 12;
 
-  const trendingByVolume = useMemo(
+  const countriesByMc = useMemo(
     () =>
       [...coins]
-        .filter((r) => r.volume24h > 0)
-        .sort((a, b) => b.volume24h - a.volume24h)
+        .filter((r) => r.category === "country" && r.marketCapUsd > 0)
+        .sort((a, b) => b.marketCapUsd - a.marketCapUsd)
         .slice(0, MAP_SIDE_LIST_SIZE),
     [coins],
   );
 
-  const topPlayersByVolume = useMemo(
+  const topPlayersByMc = useMemo(
     () =>
       [...coins]
-        .filter((r) => r.category === "footballer" && r.volume24h > 0)
-        .sort((a, b) => b.volume24h - a.volume24h)
+        .filter(
+          (r) => r.category === "footballer" && r.marketCapUsd > 0,
+        )
+        .sort((a, b) => b.marketCapUsd - a.marketCapUsd)
         .slice(0, MAP_SIDE_LIST_SIZE),
     [coins],
   );
@@ -372,6 +396,7 @@ function DashboardContent() {
     watchlistIds,
     onToggleWatchlist,
     showWatchlist: FEATURES.showWatchlistColumn,
+    ...screenerDefaultSort,
   };
 
   return (
@@ -428,8 +453,8 @@ function DashboardContent() {
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="grid min-h-0 flex-1 grid-cols-5">
           <MapVolumeSideRail
-            title="Trending"
-            rows={trendingByVolume}
+            title="Countries"
+            rows={countriesByMc}
             hoveredRowId={hoveredRowId}
             onHoverRow={setHoveredRowId}
             onRowSelect={onRowMapFocusDesktop}
@@ -476,8 +501,8 @@ function DashboardContent() {
             </div>
           </div>
           <MapVolumeSideRail
-            title="Top Players"
-            rows={topPlayersByVolume}
+            title="Players"
+            rows={topPlayersByMc}
             hoveredRowId={hoveredRowId}
             onHoverRow={setHoveredRowId}
             onRowSelect={onRowMapFocusDesktop}

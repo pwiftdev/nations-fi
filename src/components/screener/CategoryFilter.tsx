@@ -1,11 +1,14 @@
 "use client";
 
-import type { TokenCategoryId } from "@/types/token-category";
+import type {
+  ScreenerCategoryFilter,
+  TokenCategoryId,
+} from "@/types/token-category";
 import { TOKEN_CATEGORIES } from "@/types/token-category";
 
 export interface CategoryFilterProps {
-  value: TokenCategoryId | null;
-  onChange: (category: TokenCategoryId | null) => void;
+  value: ScreenerCategoryFilter;
+  onChange: (category: ScreenerCategoryFilter) => void;
   counts: Record<TokenCategoryId, number>;
 }
 
@@ -32,14 +35,14 @@ export function CategoryFilter({
       <button
         type="button"
         role="tab"
-        aria-selected={value === null}
-        onClick={() => onChange(null)}
-        className={chipClass(value === null)}
+        aria-selected={value === "trending"}
+        onClick={() => onChange("trending")}
+        className={chipClass(value === "trending")}
       >
-        All
+        Trending
         <span
           className={`ml-1.5 font-mono text-[10px] tabular-nums ${
-            value === null
+            value === "trending"
               ? "text-[var(--foreground-secondary)]"
               : "text-[var(--muted-faint)]"
           }`}

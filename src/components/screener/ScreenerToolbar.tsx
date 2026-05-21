@@ -1,6 +1,9 @@
 "use client";
 
-import type { TokenCategoryId } from "@/types/token-category";
+import type {
+  ScreenerCategoryFilter,
+  TokenCategoryId,
+} from "@/types/token-category";
 import { flagEmoji } from "@/lib/flags";
 import { CategoryFilter } from "./CategoryFilter";
 
@@ -9,9 +12,9 @@ export interface ScreenerToolbarProps {
   onQueryChange: (q: string) => void;
   resultCount: number;
   compact?: boolean;
-  categoryFilter?: TokenCategoryId | null;
+  categoryFilter?: ScreenerCategoryFilter;
   categoryCounts?: Record<TokenCategoryId, number>;
-  onCategoryChange?: (category: TokenCategoryId | null) => void;
+  onCategoryChange?: (category: ScreenerCategoryFilter) => void;
   nationFilter?: string | null;
   nationOptions?: { code: string; name: string }[];
   onNationChange?: (iso2: string | null) => void;
@@ -35,7 +38,7 @@ export function ScreenerToolbar({
   const showNationFilter =
     nationOptions.length > 0 &&
     onNationChange &&
-    (categoryFilter === null || categoryFilter === "country");
+    (categoryFilter === "trending" || categoryFilter === "country");
 
   const activeNation = nationOptions.find((o) => o.code === nationFilter);
 
@@ -81,7 +84,7 @@ export function ScreenerToolbar({
 
           {onCategoryChange && categoryCounts ? (
             <CategoryFilter
-              value={categoryFilter ?? null}
+              value={categoryFilter ?? "trending"}
               onChange={onCategoryChange}
               counts={categoryCounts}
             />
@@ -106,7 +109,7 @@ export function ScreenerToolbar({
         <div className="hidden flex-col gap-2 px-3 py-2 md:flex">
           {onCategoryChange && categoryCounts ? (
             <CategoryFilter
-              value={categoryFilter ?? null}
+              value={categoryFilter ?? "trending"}
               onChange={onCategoryChange}
               counts={categoryCounts}
             />
@@ -159,7 +162,7 @@ export function ScreenerToolbar({
     <div className="flex flex-col gap-2 border-b border-[var(--border)] bg-[var(--surface-1)]/50 px-4 py-3 lg:px-5">
       {onCategoryChange && categoryCounts ? (
         <CategoryFilter
-          value={categoryFilter ?? null}
+          value={categoryFilter ?? "trending"}
           onChange={onCategoryChange}
           counts={categoryCounts}
         />

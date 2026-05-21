@@ -19,6 +19,9 @@ export function sortScreenerRows(
 export const DEFAULT_SCREENER_SORT_KEY: ScreenerSortKey = "rank";
 export const DEFAULT_SCREENER_SORT_DIR: "asc" | "desc" = "asc";
 
+export const TRENDING_SCREENER_SORT_KEY: ScreenerSortKey = "volume24h";
+export const TRENDING_SCREENER_SORT_DIR: "asc" | "desc" = "desc";
+
 export function nextSortDirForKey(key: ScreenerSortKey): "asc" | "desc" {
   return key === "rank" || key === "ageHours" ? "asc" : "desc";
 }

@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import type { NationCoinRow } from "@/types/screener";
-import type { TokenCategoryId } from "@/types/token-category";
+import type {
+  ScreenerCategoryFilter,
+  TokenCategoryId,
+} from "@/types/token-category";
+import type { ScreenerSortKey } from "@/types/screener";
 import { formatCompactUsd } from "@/lib/format";
 import { ScreenerToolbar } from "./ScreenerToolbar";
 import { ScreenerTable } from "./ScreenerTable";
@@ -15,9 +19,11 @@ export interface ScreenerDockProps {
   /** Full listed universe (ignores search/nation filters) for aggregate MC stats. */
   aggregateRows?: NationCoinRow[];
   statsLoading?: boolean;
-  categoryFilter?: TokenCategoryId | null;
+  categoryFilter?: ScreenerCategoryFilter;
   categoryCounts?: Record<TokenCategoryId, number>;
-  onCategoryChange?: (category: TokenCategoryId | null) => void;
+  onCategoryChange?: (category: ScreenerCategoryFilter) => void;
+  defaultSortKey?: ScreenerSortKey;
+  defaultSortDir?: "asc" | "desc";
   hoveredRowId: string | null;
   onHoverRow: (id: string | null) => void;
   nationFilter?: string | null;
@@ -145,7 +151,7 @@ export function ScreenerDock(props: ScreenerDockProps) {
             onQueryChange={props.onQueryChange}
             resultCount={props.resultCount}
             compact
-            categoryFilter={props.categoryFilter ?? null}
+            categoryFilter={props.categoryFilter ?? "trending"}
             categoryCounts={props.categoryCounts}
             onCategoryChange={props.onCategoryChange}
             nationFilter={props.nationFilter ?? null}
@@ -155,6 +161,8 @@ export function ScreenerDock(props: ScreenerDockProps) {
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <ScreenerTable
               rows={props.rows}
+              defaultSortKey={props.defaultSortKey}
+              defaultSortDir={props.defaultSortDir}
               hoveredRowId={props.hoveredRowId}
               onHoverRow={props.onHoverRow}
               variant="compact"

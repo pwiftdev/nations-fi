@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NationCoinRow, ScreenerSortKey } from "@/types/screener";
 import {
   DEFAULT_SCREENER_SORT_DIR,
@@ -41,6 +41,8 @@ function SortCaret({
 
 export interface ScreenerTableProps {
   rows: NationCoinRow[];
+  defaultSortKey?: ScreenerSortKey;
+  defaultSortDir?: "asc" | "desc";
   hoveredRowId: string | null;
   onHoverRow: (id: string | null) => void;
   variant?: "full" | "compact";
@@ -206,6 +208,8 @@ function MobileTokenCard({
 
 export function ScreenerTable({
   rows,
+  defaultSortKey = DEFAULT_SCREENER_SORT_KEY,
+  defaultSortDir = DEFAULT_SCREENER_SORT_DIR,
   hoveredRowId,
   onHoverRow,
   variant = "full",
@@ -215,8 +219,13 @@ export function ScreenerTable({
   showWatchlist = false,
 }: ScreenerTableProps) {
   const [chartRow, setChartRow] = useState<NationCoinRow | null>(null);
-  const [sortKey, setSortKey] = useState<ScreenerSortKey>(DEFAULT_SCREENER_SORT_KEY);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">(DEFAULT_SCREENER_SORT_DIR);
+  const [sortKey, setSortKey] = useState<ScreenerSortKey>(defaultSortKey);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
+
+  useEffect(() => {
+    setSortKey(defaultSortKey);
+    setSortDir(defaultSortDir);
+  }, [defaultSortKey, defaultSortDir]);
 
   const sortedRows = useMemo(
     () => sortScreenerRows(rows, sortKey, sortDir),
